@@ -1,4 +1,4 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function ProductListItem({
   product,
@@ -8,6 +8,8 @@ export default function ProductListItem({
   onRemove,
   isSearch = false
 }) {
+  const isPriceLoading = price === undefined || price === 0;
+
   return (
     <div className="product-item">
       <div className="product-image">{product.image || (product.type === 'Karte' ? '🔥' : '📦')}</div>
@@ -18,9 +20,15 @@ export default function ProductListItem({
       <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ textAlign: 'right' }}>
           <div className="price-now">
-            {(price * (quantity || 1)).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+            {isPriceLoading ? (
+              <span className="text-secondary" style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Loader2 size={12} className="animate-spin" /> ...
+              </span>
+            ) : (
+              (price * (quantity || 1)).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
+            )}
           </div>
-          {!isSearch && (
+          {!isSearch && !isPriceLoading && (
             <div className="text-secondary" style={{ fontSize: '10px' }}>
               {price.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} / Stk
             </div>
