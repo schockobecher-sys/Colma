@@ -38,12 +38,12 @@ export function CollectionProvider({ children }) {
     }
 
     async function fetchPrices() {
-      // Only fetch if data is older than 6 hours
+      // Only fetch if data is older than 30 minutes
       const now = new Date().getTime();
       const lastFetch = localStorage.getItem('colma_last_fetch_time');
 
-      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 60 * 6) {
-        console.log('Using cached prices (less than 6 hours old)');
+      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
+        console.log('Using cached prices (less than 30 minutes old)');
         return;
       }
 
