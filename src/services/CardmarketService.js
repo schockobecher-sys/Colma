@@ -1,76 +1,74 @@
-import germanProducts from '../data/germanProducts.json';
+import { Database } from './Database';
 
 const PRICE_GUIDE_URL = 'https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json';
-// Primary and secondary CORS proxies for reliability
+const PRODUCTS_SINGLES_URL = 'https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json';
+const PRODUCTS_NONSINGLES_URL = 'https://downloads.s3.cardmarket.com/productCatalog/productList/products_nonsingles_6.json';
+
 const PROXIES = [
   'https://api.codetabs.com/v1/proxy?quest=',
   'https://api.allorigins.win/raw?url='
 ];
 
 export const CardmarketService = {
-  /**
-   * Fetches real prices from Cardmarket S3 via a CORS proxy.
-   * No simulation/fallback data used.
-   */
-  async fetchPriceGuide() {
+  async fetchFromProxy(url) {
     for (const proxy of PROXIES) {
       try {
-        const targetUrl = proxy + (proxy.includes('allorigins') ? encodeURIComponent(PRICE_GUIDE_URL) : PRICE_GUIDE_URL);
-        console.log(`Fetching prices via ${proxy}...`);
-
+        const targetUrl = proxy + (proxy.includes('allorigins') ? encodeURIComponent(url) : url);
         const response = await fetch(targetUrl);
-        if (!response.ok) throw new Error(`Proxy ${proxy} failed`);
-
+        if (!response.ok) continue;
         const data = await response.json();
-        if (!data || !data.priceGuides) throw new Error('Invalid data format');
-
-        return {
-          prices: this._transformPrices(data.priceGuides),
-          updatedAt: data.createdAt
-        };
+        return data;
       } catch (error) {
-        console.warn(`Attempt with ${proxy} failed:`, error.message);
-        continue; // Try next proxy
+        console.warn(`Proxy ${proxy} failed for ${url}:`, error);
       }
     }
-    throw new Error('All CORS proxies failed to fetch Cardmarket data.');
+    throw new Error(`Failed to fetch ${url} from all proxies`);
   },
 
-  _transformPrices(priceGuides) {
-    const priceMap = {};
-    priceGuides.forEach(guide => {
-      priceMap[guide.idProduct] = {
-        avg: guide.avg,
-        low: guide.low,
-        trend: guide.trend
-      };
-    });
-    return priceMap;
+  async syncData(onProgress) {
+    onProgress?.({ stage: 'prices', message: 'Lade Preise...' });
+    const priceData = await this.fetchFromProxy(PRICE_GUIDE_URL);
+    await Database.putAll('prices', priceData.priceGuides.map(p => ({
+      idProduct: p.idProduct,
+      avg: p.avg,
+      low: p.low,
+      trend: p.trend
+    })));
+    await Database.setMetadata('prices_updated_at', priceData.createdAt);
+
+    onProgress?.({ stage: 'singles', message: 'Lade Karten...' });
+    const singlesData = await this.fetchFromProxy(PRODUCTS_SINGLES_URL);
+    await Database.putAll('products', singlesData.products);
+
+    onProgress?.({ stage: 'nonsingles', message: 'Lade Produkte...' });
+    const nonSinglesData = await this.fetchFromProxy(PRODUCTS_NONSINGLES_URL);
+
+    const db = await Database.init();
+    const transaction = db.transaction('products', 'readwrite');
+    const store = transaction.objectStore('products');
+    nonSinglesData.products.forEach(p => store.put(p));
+
+    await Database.setMetadata('last_sync', new Date().toISOString());
   },
 
-  /**
-   * Uses the local curated German database for metadata.
-   */
-  async getProductMetadata(idProduct) {
-    const product = germanProducts.find(p => p.idProduct === Number(idProduct));
-    return product || {
-      idProduct: Number(idProduct),
-      name: `Produkt #${idProduct}`,
-      set: 'Unbekannt',
-      image: '❓',
-      type: 'Unbekannt'
-    };
+  async getPrice(idProduct) {
+    return await Database.get('prices', idProduct);
   },
 
-  /**
-   * Local search against curated products.
-   */
-  searchProducts(query) {
+  async getProduct(idProduct) {
+    const product = await Database.get('products', idProduct);
+    if (product) {
+        return {
+            ...product,
+            image: `https://static.cardmarket.com/img/products/1/${idProduct}.jpg`,
+            set: product.categoryName
+        };
+    }
+    return null;
+  },
+
+  async searchProducts(query) {
     if (!query || query.length < 3) return [];
-    const q = query.toLowerCase();
-    return germanProducts.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.set.toLowerCase().includes(q)
-    );
+    return await Database.searchProducts(query);
   }
 };

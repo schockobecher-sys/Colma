@@ -1,50 +1,104 @@
-import { Settings, CreditCard, Bell, Shield, LogOut } from 'lucide-react';
+import { User, LogOut, Settings, Bell, Shield, Info, HelpCircle } from 'lucide-react';
+import { useCollection } from '../context/CollectionContext';
 
 export default function ProfilePage() {
-  // Re-purposing Favorites as "Profil" (Settings/User) as is common in mobile apps
+  const { getStats } = useCollection();
+  const stats = getStats();
+
+  const menuItems = [
+    { icon: <Settings size={20} />, label: 'Einstellungen' },
+    { icon: <Bell size={20} />, label: 'Benachrichtigungen' },
+    { icon: <Shield size={20} />, label: 'Datenschutz' },
+    { icon: <Info size={20} />, label: 'Über Colma' },
+    { icon: <HelpCircle size={20} />, label: 'Hilfe & Support' },
+  ];
+
   return (
-    <div className="profile-page">
+    <div className="profile-page fade-in">
       <header className="app-header">
-        <h1 className="app-title">Profil</h1>
+        <h1 className="app-title">Trainer<span>PRO</span></h1>
       </header>
 
       <div style={{ padding: '0 16px' }}>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-          <div style={{ width: '60px', height: '60px', borderRadius: '30px', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyCenter: 'center', fontSize: '24px' }}>👤</div>
-          <div>
-            <div style={{ fontWeight: '700', fontSize: '18px' }}>Gast-Sammler</div>
-            <div className="text-secondary" style={{ fontSize: '14px' }}>Lokal gespeichert</div>
+        <div className="portfolio-card" style={{ textAlign: 'center', background: 'linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary))' }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '40px',
+            background: 'var(--pk-yellow)',
+            margin: '0 auto 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '4px solid var(--pk-blue)',
+            boxShadow: '0 0 20px var(--accent-glow)'
+          }}>
+            <User size={40} color="var(--pk-blue)" />
+          </div>
+          <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '4px' }}>Pokémon Trainer</h2>
+          <div className="text-secondary" style={{ fontSize: '14px', marginBottom: '20px' }}>Level {Math.floor(stats.itemCount / 10) + 1} • {stats.itemCount} Karten</div>
+
+          <div className="grid-2">
+            <div className="stat-box" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                <div className="stat-label">Sammler Rang</div>
+                <div className="stat-value" style={{ color: 'var(--pk-yellow)' }}>Pro</div>
+            </div>
+            <div className="stat-box" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                <div className="stat-label">Achievements</div>
+                <div className="stat-value" style={{ color: 'var(--pk-red)' }}>12</div>
+            </div>
           </div>
         </div>
 
-        <div className="product-list">
-          <div className="product-item">
-            <Settings size={20} className="text-secondary" />
-            <div className="product-info"><div className="product-name">Einstellungen</div></div>
-          </div>
-          <div className="product-item">
-            <CreditCard size={20} className="text-secondary" />
-            <div className="product-info"><div className="product-name">Abonnement (Pro)</div></div>
-          </div>
-          <div className="product-item">
-            <Bell size={20} className="text-secondary" />
-            <div className="product-info"><div className="product-name">Benachrichtigungen</div></div>
-          </div>
-          <div className="product-item">
-            <Shield size={20} className="text-secondary" />
-            <div className="product-info"><div className="product-name">Datenschutz</div></div>
-          </div>
-          <div className="product-item" style={{ border: 'none', marginTop: '20px' }}>
-            <LogOut size={20} className="text-danger" />
-            <div className="product-info"><div className="product-name text-danger">Abmelden</div></div>
-          </div>
-        </div>
+        <div className="product-list" style={{ marginBottom: '40px' }}>
+          {menuItems.map((item, index) => (
+            <button
+              key={index}
+              className="product-item"
+              style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'var(--bg-secondary)' }}
+            >
+              <div className="product-image" style={{ width: '40px', height: '40px', background: 'var(--bg-tertiary)' }}>
+                {item.icon}
+              </div>
+              <div className="product-info">
+                <div className="product-name" style={{ fontSize: '15px' }}>{item.label}</div>
+              </div>
+              <ChevronRightIcon size={16} className="text-secondary" />
+            </button>
+          ))}
 
-        <div className="text-center text-secondary" style={{ marginTop: '40px', fontSize: '12px' }}>
-          Colma Collectoppr v0.1.0<br/>
-          Daten von cardmarket.com
+          <button
+            className="product-item"
+            style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'rgba(218, 54, 51, 0.1)', borderColor: 'var(--danger)' }}
+          >
+            <div className="product-image" style={{ width: '40px', height: '40px', background: 'var(--danger)', color: 'white' }}>
+              <LogOut size={20} />
+            </div>
+            <div className="product-info">
+              <div className="product-name" style={{ fontSize: '15px', color: 'var(--danger)' }}>Abmelden</div>
+            </div>
+          </button>
         </div>
       </div>
     </div>
   );
+}
+
+function ChevronRightIcon({ size, className }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={className}
+        >
+            <path d="m9 18 6-6-6-6"/>
+        </svg>
+    );
 }

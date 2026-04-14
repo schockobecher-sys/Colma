@@ -1,42 +1,41 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Database as DbIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
-import { useEffect, useState } from 'react';
-import { CardmarketService } from '../services/CardmarketService';
 
 export default function HomePage() {
-  const { items, setPrices, setMetadata, metadata, prices, getStats, lastUpdate } = useCollection();
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const { items, metadata, prices, getStats, lastUpdate, syncStatus, syncProgress, sync } = useCollection();
 
   const stats = getStats();
 
-  useEffect(() => {
-    async function initData() {
-      // Data is managed by CollectionContext, we just reflect status here
-      const lastFetch = localStorage.getItem('colma_last_fetch_time');
-      const now = new Date().getTime();
-
-      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 5) {
-        setSyncStatus('success');
-      } else {
-        setSyncStatus('loading');
-        // The Context will handle the actual fetch
-      }
-    }
-    initData();
-  }, [prices]);
+  if (syncStatus === 'syncing') {
+    return (
+      <div className="sync-overlay">
+        <div className="pokeball-loader">
+          <div className="pokeball-line"></div>
+        </div>
+        <h2 style={{ fontWeight: 900, marginBottom: '8px' }}>Synchronisiere Datenbank</h2>
+        <p className="text-secondary">{syncProgress.message || 'Lade Daten von Cardmarket...'}</p>
+        <div style={{ marginTop: '20px', fontSize: '12px', color: 'var(--accent)' }}>
+            Dies kann beim ersten Mal bis zu 30 Sekunden dauern.
+        </div>
+      </div>
+    );
+  }
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
   return (
-    <div className="dashboard">
+    <div className="dashboard fade-in">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
-        </div>
+        <button
+          onClick={() => sync(true)}
+          className="btn-icon"
+          title="Synchronisieren"
+          style={{ width: '40px', height: '40px' }}
+        >
+          <RefreshCw size={18} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />
+        </button>
       </header>
 
       <div className="portfolio-card">
@@ -44,41 +43,47 @@ export default function HomePage() {
         <div className="portfolio-value">
           {stats.totalValue.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
         </div>
-        <div className={`portfolio-change ${stats.totalProfit >= 0 ? 'text-success' : 'text-danger'}`}>
-          {stats.totalProfit >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-          {stats.totalProfit >= 0 ? '+' : ''}{stats.totalProfit.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} ({stats.profitPercent.toFixed(1)}%) Gesamt
-        </div>
-        <div className="text-secondary" style={{ fontSize: '10px', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Clock size={10} /> Stand: {formattedDate} (Cardmarket)
+        <div className={`portfolio-change ${stats.totalProfit >= 0 ? 'text-success' : 'text-danger'}`} style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {stats.totalProfit >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
+          <span style={{ fontWeight: 800 }}>
+            {stats.totalProfit >= 0 ? '+' : ''}{stats.totalProfit.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+          </span>
+          <span style={{ opacity: 0.7 }}>({stats.profitPercent.toFixed(1)}%)</span>
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '24px' }}>
-        <div className="stat-box">
-          <div className="stat-label">Produkte</div>
-          <div className="stat-value">{items.length}</div>
-        </div>
+      <div className="grid-2">
         <div className="stat-box">
           <div className="stat-label">Gesamtanzahl</div>
           <div className="stat-value">{stats.itemCount}</div>
         </div>
+        <div className="stat-box">
+          <div className="stat-label">Unikate</div>
+          <div className="stat-value">{stats.uniqueCount}</div>
+        </div>
       </div>
 
-      <section style={{ marginBottom: '24px' }}>
+      <section>
         <div className="section-title">
-          Deine Sammlung
+          Deine Highlights
           <Link to="/collection" className="view-all">Alle sehen</Link>
         </div>
         <div className="product-list">
-          {items.slice(0, 3).map(item => {
-            const meta = metadata[item.idProduct] || { name: 'Lade...', set: '', image: '⏳' };
+          {items.slice(0, 5).map(item => {
+            const meta = metadata[item.idProduct];
             const price = prices[item.idProduct]?.trend || 0;
             return (
               <div key={item.idProduct} className="product-item">
-                <div className="product-image">{meta.image}</div>
+                <div className="product-image">
+                  <img
+                    src={`https://static.cardmarket.com/img/products/1/${item.idProduct}.jpg`}
+                    alt={meta?.name}
+                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://via.placeholder.com/64?text=TCG'; }}
+                  />
+                </div>
                 <div className="product-info">
-                  <div className="product-name">{meta.name}</div>
-                  <div className="product-meta">{meta.set} • {item.quantity}x</div>
+                  <div className="product-name">{meta?.name || 'Lade...'}</div>
+                  <div className="product-meta">{meta?.categoryName || 'Karte'} • {item.quantity}x</div>
                 </div>
                 <div className="product-price">
                   <div className="price-now">{(price * item.quantity).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
@@ -87,29 +92,21 @@ export default function HomePage() {
             );
           })}
           {items.length === 0 && (
-            <div className="text-center text-secondary" style={{ padding: '20px' }}>
-              Noch keine Produkte in der Sammlung.
+            <div className="stat-box text-center" style={{ padding: '40px 20px' }}>
+              <DbIcon size={40} className="text-secondary" style={{ marginBottom: '12px', opacity: 0.5 }} />
+              <div className="text-secondary">Deine Sammlung ist noch leer.</div>
+              <Link to="/cards" className="text-accent" style={{ textDecoration: 'none', fontWeight: 700, marginTop: '12px', display: 'block' }}>Jetzt Karten suchen</Link>
             </div>
           )}
         </div>
       </section>
 
-      <section>
-        <div className="section-title">
-          Hinzufügen
-          <Link to="/cards" className="view-all"><Plus size={18} /></Link>
+      <footer style={{ marginTop: '40px', padding: '20px', textAlign: 'center', opacity: 0.5, fontSize: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+          <Clock size={12} /> Letztes Preis-Update: {formattedDate}
         </div>
-        <div className="product-list">
-          <Link to="/cards" className="product-item" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div className="product-image"><Plus size={20} /></div>
-            <div className="product-info">
-              <div className="product-name">Neues Produkt suchen</div>
-              <div className="product-meta">In der Datenbank stöbern</div>
-            </div>
-            <ChevronRight size={16} className="text-secondary" />
-          </Link>
-        </div>
-      </section>
+        <div style={{ marginTop: '4px' }}>Daten von Cardmarket.com</div>
+      </footer>
     </div>
   );
 }

@@ -1,117 +1,152 @@
-/* New global styles to support the mobile-first redesign */
+/* Brutal Pokémon Redesign */
+
 .app-header {
-  padding: calc(20px + env(safe-area-inset-top)) 16px 20px;
-  background-color: var(--bg-primary);
+  padding: calc(30px + var(--safe-top)) 20px 20px;
+  background: linear-gradient(to bottom, var(--bg-primary), transparent);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
 }
 
 .app-title {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--text-primary);
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -1px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .app-title span {
-  background: linear-gradient(135deg, var(--accent), var(--accent-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--pk-yellow);
+  text-shadow: 2px 2px 0 var(--pk-blue);
+  background: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: initial;
 }
 
 .section-title {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 12px;
+  font-size: 20px;
+  font-weight: 800;
+  margin: 24px 0 16px;
+  padding-left: 12px;
+  border-left: 4px solid var(--accent);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.view-all {
-  font-size: 14px;
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 500;
-}
-
+/* Portfolio Card - Brutal Style */
 .portfolio-card {
-  background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
-  border-radius: 16px;
-  padding: 24px;
+  background: var(--bg-secondary);
+  border-radius: 24px;
+  padding: 30px;
   margin-bottom: 24px;
   border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
   box-shadow: var(--shadow);
+}
+
+.portfolio-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  background: var(--accent);
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
 }
 
 .portfolio-label {
   font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 700;
   color: var(--text-secondary);
-  margin-bottom: 4px;
-}
-
-.portfolio-value {
-  font-size: 32px;
-  font-weight: 800;
   margin-bottom: 8px;
 }
 
-.portfolio-change {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 600;
+.portfolio-value {
+  font-size: 42px;
+  font-weight: 900;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #fff 0%, #8b949e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
+/* Stat Boxes */
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 16px;
 }
 
 .stat-box {
-  background: var(--bg-secondary);
-  padding: 16px;
-  border-radius: 12px;
+  background: var(--bg-tertiary);
+  padding: 20px;
+  border-radius: 20px;
   border: 1px solid var(--border);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.stat-box:active {
+  transform: scale(0.98);
+  border-color: var(--accent);
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .stat-value {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
 }
 
+/* Product Items - Cards Style */
 .product-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .product-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 16px;
+  padding: 16px;
   background: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: 18px;
   border: 1px solid var(--border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.product-item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-active);
+  transform: translateX(4px);
 }
 
 .product-image {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  background: var(--bg-tertiary);
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  background: var(--bg-primary);
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
   overflow: hidden;
 }
 
@@ -119,45 +154,138 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.product-item:hover .product-image img {
+  transform: scale(1.1);
 }
 
 .product-info {
   flex: 1;
+  min-width: 0;
 }
 
 .product-name {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 2px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .product-meta {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
-}
-
-.product-price {
-  text-align: right;
+  font-weight: 500;
 }
 
 .price-now {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.view-all {
   font-size: 14px;
+  color: var(--pk-yellow);
+  text-decoration: none;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-.price-change {
-  font-size: 11px;
+/* Search Redesign */
+.search-input-wrapper {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Custom buttons */
+.search-input-wrapper:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Sync Overlay */
+.sync-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+}
+
+.pokeball-loader {
+  width: 100px;
+  height: 100px;
+  background: #fff;
+  border: 5px solid #000;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  animation: pokeball-shake 1.25s cubic-bezier(.36,.07,.19,.97) infinite;
+  margin-bottom: 30px;
+}
+
+.pokeball-loader::before {
+  content: '';
+  position: absolute;
+  background: var(--pk-red);
+  width: 100%;
+  height: 50%;
+  top: 0;
+}
+
+.pokeball-loader::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border: 5px solid #000;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+.pokeball-line {
+  position: absolute;
+  top: 50%;
+  width: 100%;
+  height: 5px;
+  background: #000;
+  transform: translateY(-50%);
+}
+
+@keyframes pokeball-shake {
+  0% { transform: rotate(0); }
+  20% { transform: rotate(-10deg); }
+  40% { transform: rotate(10deg); }
+  60% { transform: rotate(-10deg); }
+  80% { transform: rotate(10deg); }
+  100% { transform: rotate(0); }
+}
+
 .btn-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--bg-secondary);
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border);
   color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:active {
+  transform: scale(0.9);
+  background: var(--accent);
 }
