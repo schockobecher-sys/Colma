@@ -1,0 +1,21 @@
+[
+  { "idProduct": 271439, "name": "Glurak ex", "set": "Obsidianflammen", "image": "🔥", "type": "Karte" },
+  { "idProduct": 271440, "name": "151 Display", "set": "Karmesin & Purpur", "image": "📦", "type": "Sealed" },
+  { "idProduct": 271823, "name": "Pikachu", "set": "151", "image": "⚡", "type": "Karte" },
+  { "idProduct": 271825, "name": "Bisaflor ex", "set": "151", "image": "🍃", "type": "Karte" },
+  { "idProduct": 271827, "name": "Schiggy", "set": "151", "image": "💧", "type": "Karte" },
+  { "idProduct": 271828, "name": "Schillok", "set": "151", "image": "💧", "type": "Karte" },
+  { "idProduct": 271829, "name": "Turtok ex", "set": "151", "image": "🐢", "type": "Karte" },
+  { "idProduct": 727763, "name": "Glurak ex (SVP 056)", "set": "Promos", "image": "🔥", "type": "Karte" },
+  { "idProduct": 718320, "name": "Simsala ex", "set": "151", "image": "🔮", "type": "Karte" },
+  { "idProduct": 718321, "name": "Kangama ex", "set": "151", "image": "🐨", "type": "Karte" },
+  { "idProduct": 722384, "name": "Zapdos ex", "set": "151", "image": "⚡", "type": "Karte" },
+  { "idProduct": 722385, "name": "Mew ex", "set": "151", "image": "✨", "type": "Karte" },
+  { "idProduct": 732298, "name": "Eisenrad ex", "set": "Gewalten der Zeit", "image": "🐘", "type": "Karte" },
+  { "idProduct": 732301, "name": "Windewoge ex", "set": "Gewalten der Zeit", "image": "🌊", "type": "Karte" },
+  { "idProduct": 726053, "name": "151 Elite Trainer Box", "set": "151", "image": "📦", "type": "Sealed" },
+  { "idProduct": 726054, "name": "151 Poster Kollektion", "set": "151", "image": "🖼️", "type": "Sealed" },
+  { "idProduct": 726055, "name": "151 Binder Kollektion", "set": "151", "image": "📔", "type": "Sealed" },
+  { "idProduct": 271441, "name": "Obsidianflammen Display", "set": "Obsidianflammen", "image": "📦", "type": "Sealed" },
+  { "idProduct": 271442, "name": "Entfesseltes Karma Display", "set": "Entfesseltes Karma", "image": "📦", "type": "Sealed" }
+]
