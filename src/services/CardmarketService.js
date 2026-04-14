@@ -10,16 +10,28 @@ const PROXIES = [
 ];
 
 export const CardmarketService = {
+  async fetchWithTimeout(url, timeout = 30000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(id);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (e) {
+      clearTimeout(id);
+      throw e;
+    }
+  },
+
   async fetchFromProxy(url) {
     for (const proxy of PROXIES) {
       try {
         const targetUrl = proxy + (proxy.includes('allorigins') ? encodeURIComponent(url) : url);
-        const response = await fetch(targetUrl);
-        if (!response.ok) continue;
-        const data = await response.json();
-        return data;
+        console.log(`Trying proxy ${proxy} for ${url}`);
+        return await this.fetchWithTimeout(targetUrl);
       } catch (error) {
-        console.warn(`Proxy ${proxy} failed for ${url}:`, error);
+        console.warn(`Proxy ${proxy} failed for ${url}:`, error.message);
       }
     }
     throw new Error(`Failed to fetch ${url} from all proxies`);
@@ -43,10 +55,19 @@ export const CardmarketService = {
     onProgress?.({ stage: 'nonsingles', message: 'Lade Produkte...' });
     const nonSinglesData = await this.fetchFromProxy(PRODUCTS_NONSINGLES_URL);
 
-    const db = await Database.init();
-    const transaction = db.transaction('products', 'readwrite');
-    const store = transaction.objectStore('products');
-    nonSinglesData.products.forEach(p => store.put(p));
+    // Non-singles are usually fewer, but let's use the same batched put for consistency
+    const putDb = await Database.init();
+    const batchSize = 1000;
+    for (let i = 0; i < nonSinglesData.products.length; i += batchSize) {
+        const batch = nonSinglesData.products.slice(i, i + batchSize);
+        await new Promise((resolve, reject) => {
+            const transaction = putDb.transaction('products', 'readwrite');
+            const store = transaction.objectStore('products');
+            batch.forEach(p => store.put(p));
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        });
+    }
 
     await Database.setMetadata('last_sync', new Date().toISOString());
   },

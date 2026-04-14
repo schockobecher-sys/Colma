@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Database as DbIcon } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw, CheckCircle2, AlertCircle, Clock, Database as DbIcon, SkipForward } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 
@@ -18,8 +18,35 @@ export default function HomePage() {
         <div style={{ marginTop: '20px', fontSize: '12px', color: 'var(--accent)' }}>
             Dies kann beim ersten Mal bis zu 30 Sekunden dauern.
         </div>
+        <div style={{ marginTop: '40px', display: 'flex', gap: '12px' }}>
+            <button
+                onClick={() => window.location.reload()}
+                className="btn-icon"
+                style={{ width: 'auto', padding: '0 20px', gap: '8px', fontSize: '14px' }}
+            >
+                <RefreshCw size={16} /> Neu laden
+            </button>
+        </div>
       </div>
     );
+  }
+
+  if (syncStatus === 'error') {
+      return (
+        <div className="sync-overlay">
+            <AlertCircle size={64} className="text-danger" style={{ marginBottom: '24px' }} />
+            <h2 style={{ fontWeight: 900, marginBottom: '8px' }}>Verbindung fehlgeschlagen</h2>
+            <p className="text-secondary" style={{ marginBottom: '30px' }}>Cardmarket Daten konnten nicht geladen werden.</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+                <button onClick={() => sync(true)} className="btn-icon" style={{ width: 'auto', padding: '0 20px', background: 'var(--accent)', border: 'none' }}>
+                    Erneut versuchen
+                </button>
+                <button onClick={() => window.location.href='/collection'} className="btn-icon" style={{ width: 'auto', padding: '0 20px' }}>
+                    Sammlung ansehen
+                </button>
+            </div>
+        </div>
+      );
   }
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';

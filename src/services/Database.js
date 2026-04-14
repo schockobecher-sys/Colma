@@ -33,31 +33,36 @@ export const Database = {
     });
   },
 
+  /**
+   * Batched put operation for high performance and reliability with large datasets.
+   */
   async putAll(storeName, items) {
     const putDb = await this.init();
-    return new Promise((resolve, reject) => {
-      const transaction = putDb.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
+    const batchSize = 5000;
 
-      store.clear();
-
-      let i = 0;
-      function putNext() {
-        if (i < items.length) {
-          const request = store.put(items[i]);
-          request.onerror = () => reject(request.error);
-          i++;
-          if (i % 1000 === 0) {
-            setTimeout(putNext, 0);
-          } else {
-            putNext();
-          }
-        } else {
-          resolve();
-        }
-      }
-      putNext();
+    // Clear the store first
+    await new Promise((resolve, reject) => {
+        const transaction = putDb.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
     });
+
+    for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        await new Promise((resolve, reject) => {
+            const transaction = putDb.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+
+            batch.forEach(item => store.put(item));
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        });
+        // Give UI thread some air
+        await new Promise(r => setTimeout(r, 0));
+    }
   },
 
   async getAll(storeName) {
