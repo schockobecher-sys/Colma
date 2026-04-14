@@ -1,32 +1,25 @@
 :root {
-  /* Pokémon Core Palette */
+  /* Dynamic Pokémon Palette */
   --pk-red: #ff1c1c;
+  --pk-red-glow: rgba(255, 28, 28, 0.4);
   --pk-blue: #3b4cca;
+  --pk-blue-glow: rgba(59, 76, 202, 0.4);
   --pk-yellow: #ffde00;
-  --pk-gold: #b3a125;
+  --pk-gold: #f7d51d;
+  --pk-dark-blue: #2a3990;
 
-  /* Modern Dark Theme */
-  --bg-primary: #050608;
-  --bg-secondary: #0d1117;
-  --bg-tertiary: #161b22;
-  --bg-glass: rgba(13, 17, 23, 0.7);
+  /* Cyber-Gaming Dark Theme */
+  --bg-deep: #020408;
+  --bg-panel: #0a0c12;
+  --bg-card: rgba(16, 20, 30, 0.8);
+  --bg-glass: rgba(10, 12, 18, 0.6);
 
-  --text-primary: #f0f6fc;
-  --text-secondary: #8b949e;
+  --text-main: #ffffff;
+  --text-muted: #94a3b8;
 
-  --accent: #ff1c1c;
-  --accent-glow: rgba(255, 28, 28, 0.3);
-  --accent-secondary: #3b4cca;
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-glow: rgba(59, 76, 202, 0.3);
 
-  --success: #238636;
-  --danger: #da3633;
-  --border: #30363d;
-  --border-active: #8b949e;
-
-  --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-  /* Safe Areas for Capacitor */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -34,82 +27,124 @@
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
-  outline: none;
+  font-family: 'Inter', -apple-system, sans-serif;
 }
 
 body {
   margin: 0;
-  padding: 0;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg-deep);
+  color: var(--text-main);
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(255, 28, 28, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(59, 76, 202, 0.05) 0%, transparent 40%);
+    radial-gradient(circle at 0% 0%, var(--pk-red-glow) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, var(--pk-blue-glow) 0%, transparent 50%);
+  background-attachment: fixed;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
-#root {
-  min-height: 100vh;
+/* Glassmorphism & Cyber Elements */
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-light);
+  border-radius: 24px;
 }
 
-.app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  padding-bottom: calc(85px + var(--safe-bottom));
+.cyber-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.main-content {
-  flex: 1;
-  padding: 16px;
-  max-width: 600px;
-  margin: 0 auto;
-  width: 100%;
+.cyber-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+  pointer-events: none;
 }
 
 /* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes holo-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-@keyframes pulse-glow {
-  0% { box-shadow: 0 0 5px var(--accent-glow); }
-  50% { box-shadow: 0 0 20px var(--accent-glow); }
-  100% { box-shadow: 0 0 5px var(--accent-glow); }
+.holo-effect {
+  position: relative;
+  overflow: hidden;
 }
 
-.fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+.holo-effect::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 70%,
+    transparent 100%
+  );
+  transform: rotate(25deg);
+  animation: holo-shimmer 3s infinite linear;
+  pointer-events: none;
 }
 
-/* Utility Classes */
-.text-secondary { color: var(--text-secondary); }
-.text-success { color: var(--success); }
-.text-danger { color: var(--danger); }
-.text-center { text-align: center; }
-.text-accent { color: var(--accent); }
-
-.animate-spin {
-  animation: spin 1s linear infinite;
+/* Pokeball Loader */
+.pokeball-loader {
+  width: 80px;
+  height: 80px;
+  background: #fff;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  border: 4px solid #333;
+  animation: bounce 1.2s infinite ease-in-out;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.pokeball-loader::before {
+  content: '';
+  position: absolute;
+  background: var(--pk-red);
+  width: 100%;
+  height: 50%;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+.pokeball-loader::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border: 4px solid #333;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
 }
-::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(20deg); }
 }
-::-webkit-scrollbar-thumb {
-  background: var(--bg-tertiary);
-  border-radius: 10px;
+
+/* Utility */
+.text-accent { color: var(--pk-yellow); text-shadow: 0 0 10px rgba(255, 222, 0, 0.3); }
+.text-gradient {
+  background: linear-gradient(to right, #fff, var(--text-muted));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--pk-blue); border-radius: 10px; }

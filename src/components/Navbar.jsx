@@ -1,25 +1,48 @@
 import { NavLink } from 'react-router-dom';
 import { Home, Search, Library, User } from 'lucide-react';
-import './Navbar.css';
 
 export default function Navbar() {
   return (
-    <nav className="navbar">
-      <NavLink to="/" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-        <Home size={24} />
-        <span>Home</span>
+    <nav className="nav-bar">
+      <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+        {({ isActive }) => (
+          <>
+            <div className="nav-icon-box">
+              <Home size={24} strokeWidth={isActive ? 2.5 : 2} />
+            </div>
+            <span>Home</span>
+          </>
+        )}
       </NavLink>
-      <NavLink to="/cards" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-        <Search size={24} />
-        <span>Suche</span>
+      <NavLink to="/cards" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+        {({ isActive }) => (
+          <>
+            <div className="nav-icon-box">
+              <Search size={24} strokeWidth={isActive ? 2.5 : 2} />
+            </div>
+            <span>Suche</span>
+          </>
+        )}
       </NavLink>
-      <NavLink to="/collection" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-        <Library size={24} />
-        <span>Sammlung</span>
+      <NavLink to="/collection" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+        {({ isActive }) => (
+          <>
+            <div className="nav-icon-box">
+              <Library size={24} strokeWidth={isActive ? 2.5 : 2} />
+            </div>
+            <span>Sammlung</span>
+          </>
+        )}
       </NavLink>
-      <NavLink to="/favorites" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-        <User size={24} />
-        <span>Profil</span>
+      <NavLink to="/favorites" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+        {({ isActive }) => (
+          <>
+            <div className="nav-icon-box">
+              <User size={24} strokeWidth={isActive ? 2.5 : 2} />
+            </div>
+            <span>Profil</span>
+          </>
+        )}
       </NavLink>
     </nav>
   );

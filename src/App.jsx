@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage';
 import CardsPage from './pages/CardsPage';
 import CollectionPage from './pages/CollectionPage';
 import ProfilePage from './pages/ProfilePage';
+import CardDetailPage from './pages/CardDetailPage';
 import './App.css';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
               <Route path="/cards" element={<CardsPage />} />
               <Route path="/collection" element={<CollectionPage />} />
               <Route path="/favorites" element={<ProfilePage />} />
+              <Route path="/product/:id" element={<CardDetailPage />} />
             </Routes>
           </main>
         </div>

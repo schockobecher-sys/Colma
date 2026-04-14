@@ -37,9 +37,28 @@ export default function CardsPage() {
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
 
+  const playFeedback = () => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(1320, audioCtx.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.15);
+      if (window.navigator.vibrate) window.navigator.vibrate(30);
+    } catch (e) {}
+  };
+
   const handleAdd = (product) => {
     const price = prices[product.idProduct]?.trend || 0;
     addItem(product.idProduct, 1, price);
+    playFeedback();
   };
 
   return (
@@ -48,9 +67,9 @@ export default function CardsPage() {
         <h1 className="app-title">Suche<span>DB</span></h1>
       </header>
 
-      <div className="search-container" style={{ padding: '0 16px', marginBottom: '10px' }}>
-        <div className="search-input-wrapper" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '20px', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: 'var(--shadow)' }}>
-          {isSearching ? <Loader2 size={22} className="text-accent animate-spin" /> : <Search size={22} className="text-secondary" />}
+      <div className="search-container" style={{ padding: '0 20px', marginBottom: '20px' }}>
+        <div className="glass-panel" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {isSearching ? <Loader2 size={22} className="text-accent animate-spin" /> : <Search size={22} className="text-muted" />}
           <input
             type="text"
             placeholder="Glurak, 151, Booster..."
