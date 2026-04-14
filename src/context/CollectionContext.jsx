@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { CardmarketService } from '../services/CardmarketService';
+import { Database } from '../services/Database';
 
 const CollectionContext = createContext();
 
@@ -19,49 +20,72 @@ export function CollectionProvider({ children }) {
 
   const [prices, setPrices] = useState({});
   const [metadata, setMetadata] = useState({});
-  const [lastUpdate, setLastUpdate] = useState(localStorage.getItem('colma_last_update') || '');
+  const [lastUpdate, setLastUpdate] = useState('');
+  const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, success, error
+  const [syncProgress, setSyncProgress] = useState({ message: '' });
 
+  // Load items and metadata
   useEffect(() => {
     localStorage.setItem('colma_collection', JSON.stringify(items));
-    items.forEach(async (item) => {
-      if (!metadata[item.idProduct]) {
-        const meta = await CardmarketService.getProductMetadata(item.idProduct);
-        setMetadata(prev => ({ ...prev, [item.idProduct]: meta }));
+
+    const loadMetadata = async () => {
+      const newMetadata = { ...metadata };
+      let changed = false;
+      for (const item of items) {
+        if (!newMetadata[item.idProduct]) {
+          const meta = await CardmarketService.getProduct(item.idProduct);
+          if (meta) {
+            newMetadata[item.idProduct] = meta;
+            changed = true;
+          }
+        }
       }
-    });
+      if (changed) setMetadata(newMetadata);
+    };
+
+    loadMetadata();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
-  useEffect(() => {
-    const savedPrices = localStorage.getItem('colma_prices');
-    if (savedPrices) {
-      setPrices(JSON.parse(savedPrices));
+  const sync = useCallback(async (force = false) => {
+    const lastSync = await Database.getMetadata('last_sync');
+    const now = new Date().getTime();
+
+    if (!force && lastSync && (now - new Date(lastSync).getTime() < 1000 * 60 * 60 * 24)) {
+      setSyncStatus('success');
+      const savedPrices = await Database.getAll('prices');
+      const priceMap = {};
+      savedPrices.forEach(p => {
+          priceMap[p.idProduct] = p;
+      });
+      setPrices(priceMap);
+      setLastUpdate(await Database.getMetadata('prices_updated_at'));
+      return;
     }
 
-    async function fetchPrices() {
-      // Only fetch if data is older than 30 minutes
-      const now = new Date().getTime();
-      const lastFetch = localStorage.getItem('colma_last_fetch_time');
+    setSyncStatus('syncing');
+    try {
+      await CardmarketService.syncData((progress) => {
+        setSyncProgress(progress);
+      });
+      setSyncStatus('success');
 
-      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
-        console.log('Using cached prices (less than 30 minutes old)');
-        return;
-      }
-
-      try {
-        const result = await CardmarketService.fetchPriceGuide();
-        if (result) {
-          setPrices(result.prices);
-          setLastUpdate(result.updatedAt);
-          localStorage.setItem('colma_prices', JSON.stringify(result.prices));
-          localStorage.setItem('colma_last_update', result.updatedAt);
-          localStorage.setItem('colma_last_fetch_time', now.toString());
-        }
-      } catch (e) {
-        console.error('Failed to update prices:', e);
-      }
+      const savedPrices = await Database.getAll('prices');
+      const priceMap = {};
+      savedPrices.forEach(p => {
+          priceMap[p.idProduct] = p;
+      });
+      setPrices(priceMap);
+      setLastUpdate(await Database.getMetadata('prices_updated_at'));
+    } catch (e) {
+      console.error('Sync failed:', e);
+      setSyncStatus('error');
     }
-    fetchPrices();
   }, []);
+
+  useEffect(() => {
+    sync();
+  }, [sync]);
 
   const addItem = (idProduct, quantity = 1, purchasePrice = 0) => {
     setItems(prev => {
@@ -94,22 +118,18 @@ export function CollectionProvider({ children }) {
     );
   };
 
-  const getTotalValue = () => {
-    return items.reduce((total, item) => {
-      const currentPrice = prices[item.idProduct]?.trend || 0;
-      return total + currentPrice * item.quantity;
-    }, 0);
-  };
-
-  const getTotalPurchaseValue = () => {
-    return items.reduce((total, item) => {
-      return total + (item.purchasePrice || 0) * item.quantity;
-    }, 0);
-  };
-
   const getStats = () => {
-    const totalValue = getTotalValue();
-    const purchaseValue = getTotalPurchaseValue();
+    let totalValue = 0;
+    let purchaseValue = 0;
+    let itemCount = 0;
+
+    items.forEach(item => {
+      const currentPrice = prices[item.idProduct]?.trend || 0;
+      totalValue += currentPrice * item.quantity;
+      purchaseValue += (item.purchasePrice || 0) * item.quantity;
+      itemCount += item.quantity;
+    });
+
     const totalProfit = totalValue - purchaseValue;
     const profitPercent = purchaseValue > 0 ? (totalProfit / purchaseValue) * 100 : 0;
 
@@ -117,7 +137,7 @@ export function CollectionProvider({ children }) {
       totalValue,
       totalProfit,
       profitPercent,
-      itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+      itemCount,
       uniqueCount: items.length
     };
   };
@@ -129,13 +149,13 @@ export function CollectionProvider({ children }) {
         prices,
         metadata,
         lastUpdate,
-        setPrices,
-        setMetadata,
+        syncStatus,
+        syncProgress,
+        sync,
         addItem,
         removeItem,
         updateItem,
-        getStats,
-        getTotalValue
+        getStats
       }}
     >
       {children}

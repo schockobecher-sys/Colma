@@ -1,36 +1,47 @@
-.bottom-nav {
+.navbar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(70px + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
-  background-color: var(--bg-secondary);
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
   border-top: 1px solid var(--border);
+  height: calc(70px + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 0 10px;
   z-index: 1000;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
 }
 
 .nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-decoration: none;
+  justify-content: center;
   color: var(--text-secondary);
-  font-size: 11px;
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   gap: 4px;
-  transition: color 0.2s ease;
-  flex: 1;
+  width: 25%;
+  height: 100%;
+  transition: all 0.2s ease;
 }
 
 .nav-item.active {
-  color: var(--accent);
+  color: var(--pk-yellow);
 }
 
-.nav-item span {
-  font-weight: 500;
+.nav-item.active svg {
+  color: var(--pk-red);
+  filter: drop-shadow(0 0 5px var(--pk-red));
+  transform: translateY(-2px);
+}
+
+.nav-item svg {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
