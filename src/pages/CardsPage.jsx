@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { useCollection } from '../context/CollectionContext';
+import { CardmarketService } from '../services/CardmarketService';
 import ProductListItem from '../components/ProductListItem';
 
 export default function CardsPage() {
@@ -9,17 +10,9 @@ export default function CardsPage() {
   const [searchResults, setSearchResults] = useState([]);
 
   useEffect(() => {
-    if (searchTerm.length > 2) {
-      setSearchResults([
-        { idProduct: 271439, name: 'Glurak ex', set: 'Obsidianflammen', type: 'Karte' },
-        { idProduct: 271440, name: '151 Display', set: 'Karmesin & Purpur', type: 'Sealed' },
-        { idProduct: 271823, name: 'Pikachu', set: '151', type: 'Karte' },
-        { idProduct: 271825, name: 'Bisaflor ex', set: '151', type: 'Karte' },
-        { idProduct: 271827, name: 'Schiggy', set: '151', type: 'Karte' },
-      ].filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase())));
-    } else {
-      setSearchResults([]);
-    }
+    // Search in the curated database
+    const results = CardmarketService.searchProducts(searchTerm);
+    setSearchResults(results);
   }, [searchTerm]);
 
   const handleAdd = (product) => {
@@ -63,7 +56,7 @@ export default function CardsPage() {
             ))
           ) : (
             <div className="text-center text-secondary" style={{ marginTop: '40px' }}>
-              {searchTerm.length > 2 ? 'Keine Ergebnisse gefunden' : 'Gib mindestens 3 Zeichen ein'}
+              {searchTerm.length > 2 ? 'Keine Ergebnisse gefunden' : 'Gib mindestens 3 Zeichen ein (z.B. Glurak, 151)'}
             </div>
           )}
         </div>

@@ -19,10 +19,10 @@ export function CollectionProvider({ children }) {
 
   const [prices, setPrices] = useState({});
   const [metadata, setMetadata] = useState({});
+  const [lastUpdate, setLastUpdate] = useState(localStorage.getItem('colma_last_update') || '');
 
   useEffect(() => {
     localStorage.setItem('colma_collection', JSON.stringify(items));
-    // Fetch missing metadata when items change
     items.forEach(async (item) => {
       if (!metadata[item.idProduct]) {
         const meta = await CardmarketService.getProductMetadata(item.idProduct);
@@ -33,14 +33,31 @@ export function CollectionProvider({ children }) {
 
   useEffect(() => {
     const savedPrices = localStorage.getItem('colma_prices');
-    if (savedPrices) setPrices(JSON.parse(savedPrices));
+    if (savedPrices) {
+      setPrices(JSON.parse(savedPrices));
+    }
 
-    // Initial price fetch
     async function fetchPrices() {
-      const priceData = await CardmarketService.fetchPriceGuide();
-      if (priceData) {
-        setPrices(priceData);
-        localStorage.setItem('colma_prices', JSON.stringify(priceData));
+      // Only fetch if data is older than 6 hours
+      const now = new Date().getTime();
+      const lastFetch = localStorage.getItem('colma_last_fetch_time');
+
+      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 60 * 6) {
+        console.log('Using cached prices (less than 6 hours old)');
+        return;
+      }
+
+      try {
+        const result = await CardmarketService.fetchPriceGuide();
+        if (result) {
+          setPrices(result.prices);
+          setLastUpdate(result.updatedAt);
+          localStorage.setItem('colma_prices', JSON.stringify(result.prices));
+          localStorage.setItem('colma_last_update', result.updatedAt);
+          localStorage.setItem('colma_last_fetch_time', now.toString());
+        }
+      } catch (e) {
+        console.error('Failed to update prices:', e);
       }
     }
     fetchPrices();
@@ -111,6 +128,7 @@ export function CollectionProvider({ children }) {
         items,
         prices,
         metadata,
+        lastUpdate,
         setPrices,
         setMetadata,
         addItem,

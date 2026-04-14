@@ -76,6 +76,14 @@ button {
 .text-danger { color: var(--danger); }
 .text-center { text-align: center; }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 2s linear infinite;
+}
+
 .card {
   background: var(--bg-secondary);
   border-radius: 12px;

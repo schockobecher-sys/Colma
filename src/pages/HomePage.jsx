@@ -1,40 +1,42 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState } from 'react';
 import { CardmarketService } from '../services/CardmarketService';
 
 export default function HomePage() {
-  const { items, setPrices, setMetadata, metadata, prices, getStats } = useCollection();
-  const [loading, setLoading] = useState(true);
+  const { items, setPrices, setMetadata, metadata, prices, getStats, lastUpdate } = useCollection();
+  const [syncStatus, setSyncStatus] = useState('idle');
 
   const stats = getStats();
 
   useEffect(() => {
     async function initData() {
-      // In a real app, this might be a background sync
-      const priceData = await CardmarketService.fetchPriceGuide();
-      if (priceData) {
-        setPrices(priceData);
-        localStorage.setItem('colma_prices', JSON.stringify(priceData));
-      }
+      // Data is managed by CollectionContext, we just reflect status here
+      const lastFetch = localStorage.getItem('colma_last_fetch_time');
+      const now = new Date().getTime();
 
-      // Fetch metadata for collection items
-      const meta = {};
-      for (const item of items) {
-        meta[item.idProduct] = await CardmarketService.getProductMetadata(item.idProduct);
+      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 5) {
+        setSyncStatus('success');
+      } else {
+        setSyncStatus('loading');
+        // The Context will handle the actual fetch
       }
-      setMetadata(prev => ({ ...prev, ...meta }));
-      setLoading(false);
     }
-
     initData();
-  }, [items.length]); // Re-run if collection size changes
+  }, [prices]);
+
+  const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
   return (
     <div className="dashboard">
-      <header className="app-header">
+      <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
+        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
+          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
+          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
+          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
+        </div>
       </header>
 
       <div className="portfolio-card">
@@ -44,7 +46,10 @@ export default function HomePage() {
         </div>
         <div className={`portfolio-change ${stats.totalProfit >= 0 ? 'text-success' : 'text-danger'}`}>
           {stats.totalProfit >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-          {stats.totalProfit >= 0 ? '+' : ''}{stats.totalProfit.toFixed(2)}€ ({stats.profitPercent.toFixed(1)}%) Gesamt
+          {stats.totalProfit >= 0 ? '+' : ''}{stats.totalProfit.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} ({stats.profitPercent.toFixed(1)}%) Gesamt
+        </div>
+        <div className="text-secondary" style={{ fontSize: '10px', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <Clock size={10} /> Stand: {formattedDate} (Cardmarket)
         </div>
       </div>
 
@@ -76,7 +81,7 @@ export default function HomePage() {
                   <div className="product-meta">{meta.set} • {item.quantity}x</div>
                 </div>
                 <div className="product-price">
-                  <div className="price-now">{(price * item.quantity).toFixed(2)} €</div>
+                  <div className="price-now">{(price * item.quantity).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
                 </div>
               </div>
             );
@@ -98,8 +103,8 @@ export default function HomePage() {
           <Link to="/cards" className="product-item" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="product-image"><Plus size={20} /></div>
             <div className="product-info">
-              <div className="product-name">Neues Produkt scannen</div>
-              <div className="product-meta">Suche in der Datenbank</div>
+              <div className="product-name">Neues Produkt suchen</div>
+              <div className="product-meta">In der Datenbank stöbern</div>
             </div>
             <ChevronRight size={16} className="text-secondary" />
           </Link>
