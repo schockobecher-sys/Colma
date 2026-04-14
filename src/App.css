@@ -1,6 +1,6 @@
 /* New global styles to support the mobile-first redesign */
 .app-header {
-  padding: 20px 16px;
+  padding: calc(20px + env(safe-area-inset-top)) 16px 20px;
   background-color: var(--bg-primary);
 }
 
