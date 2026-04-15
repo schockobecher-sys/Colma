@@ -17,7 +17,10 @@ export function CollectionProvider({ children }) {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [prices, setPrices] = useState({});
+  const [prices, setPrices] = useState(() => {
+    const savedPrices = localStorage.getItem('colma_prices');
+    return savedPrices ? JSON.parse(savedPrices) : {};
+  });
   const [metadata, setMetadata] = useState({});
   const [lastUpdate, setLastUpdate] = useState(localStorage.getItem('colma_last_update') || '');
 
@@ -29,14 +32,10 @@ export function CollectionProvider({ children }) {
         setMetadata(prev => ({ ...prev, [item.idProduct]: meta }));
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
   useEffect(() => {
-    const savedPrices = localStorage.getItem('colma_prices');
-    if (savedPrices) {
-      setPrices(JSON.parse(savedPrices));
-    }
-
     async function fetchPrices() {
       // Only fetch if data is older than 30 minutes
       const now = new Date().getTime();

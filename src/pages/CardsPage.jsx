@@ -1,24 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { useCollection } from '../context/CollectionContext';
 import { CardmarketService } from '../services/CardmarketService';
 import ProductListItem from '../components/ProductListItem';
+import FeedbackService from '../services/FeedbackService';
 
 export default function CardsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const { addItem, prices } = useCollection();
-  const [searchResults, setSearchResults] = useState([]);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // Debouncing logic
   useEffect(() => {
-    // Search in the curated database
-    const results = CardmarketService.searchProducts(searchTerm);
-    setSearchResults(results);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 400);
+    return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  const searchResults = useMemo(() => {
+    return CardmarketService.searchProducts(debouncedSearch);
+  }, [debouncedSearch]);
 
   const handleAdd = (product) => {
     const price = prices[product.idProduct]?.trend || 0;
     addItem(product.idProduct, 1, price);
-    alert(`${product.name} zur Sammlung hinzugefügt!`);
+    FeedbackService.triggerAdd();
+    // Use a non-blocking notification instead of alert for better UX
+    console.log(`${product.name} hinzugefügt`);
   };
 
   return (

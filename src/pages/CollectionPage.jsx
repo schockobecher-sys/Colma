@@ -1,8 +1,14 @@
 import { useCollection } from '../context/CollectionContext';
 import ProductListItem from '../components/ProductListItem';
+import FeedbackService from '../services/FeedbackService';
 
 export default function CollectionPage() {
   const { items, metadata, prices, removeItem } = useCollection();
+
+  const handleRemove = (idProduct) => {
+    removeItem(idProduct);
+    FeedbackService.triggerRemove();
+  };
 
   return (
     <div className="collection-page">
@@ -21,7 +27,7 @@ export default function CollectionPage() {
                 product={meta}
                 price={price}
                 quantity={item.quantity}
-                onRemove={removeItem}
+                onRemove={handleRemove}
               />
             );
           })
