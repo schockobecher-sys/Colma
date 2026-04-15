@@ -8,9 +8,24 @@ export default function ProductListItem({
   onRemove,
   isSearch = false
 }) {
+  const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
+  const isCard = product.type === 'Karte';
+
   return (
     <div className="product-item">
-      <div className="product-image">{product.image || (product.type === 'Karte' ? '🔥' : '📦')}</div>
+      <div className="product-image">
+        <img
+          src={imageUrl}
+          alt={product.name}
+          loading="lazy"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.style.display = 'none';
+            e.target.parentNode.innerHTML = isCard ? '🔥' : '📦';
+          }}
+        />
+        {isCard && <div className="holo-effect"></div>}
+      </div>
       <div className="product-info">
         <div className="product-name">{product.name}</div>
         <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${quantity} Stück`}</div>
@@ -31,15 +46,14 @@ export default function ProductListItem({
           <button
             className="btn-icon"
             onClick={() => onAdd && onAdd(product)}
-            style={{ background: 'var(--accent)', border: 'none' }}
           >
-            <Plus size={20} color="white" />
+            <Plus size={20} />
           </button>
         ) : onRemove ? (
           <button
             className="btn-icon"
             onClick={() => onRemove(product.idProduct)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto', boxShadow: 'none' }}
           >
             <Trash2 size={18} />
           </button>

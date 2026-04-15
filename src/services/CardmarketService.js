@@ -72,5 +72,12 @@ export const CardmarketService = {
       p.name.toLowerCase().includes(q) ||
       p.set.toLowerCase().includes(q)
     );
+  },
+
+  /**
+   * Helper to get the Cardmarket image URL
+   */
+  getProductImageUrl(idProduct) {
+    return `https://static.cardmarket.com/img/products/1/${idProduct}.jpg`;
   }
 };
