@@ -1,9 +1,48 @@
+import { useState, useMemo } from 'react';
 import { useCollection } from '../context/CollectionContext';
 import ProductListItem from '../components/ProductListItem';
 import FeedbackService from '../services/FeedbackService';
+import { Filter, SortAsc, SortDesc } from 'lucide-react';
 
 export default function CollectionPage() {
   const { items, metadata, prices, removeItem } = useCollection();
+  const [sortBy, setSortBy] = useState('date'); // 'date', 'value', 'profit', 'name'
+  const [filterType, setFilterType] = useState('all'); // 'all', 'Karte', 'Sealed'
+
+  const filteredAndSortedItems = useMemo(() => {
+    let result = [...items];
+
+    // Filter
+    if (filterType !== 'all') {
+      result = result.filter(item => {
+        const meta = metadata[item.idProduct];
+        return meta && meta.type === filterType;
+      });
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      const metaA = metadata[a.idProduct] || {};
+      const metaB = metadata[b.idProduct] || {};
+      const priceA = prices[a.idProduct]?.trend || 0;
+      const priceB = prices[b.idProduct]?.trend || 0;
+      const valueA = priceA * a.quantity;
+      const valueB = priceB * b.quantity;
+      const profitA = valueA - (a.purchasePrice || 0) * a.quantity;
+      const profitB = valueB - (b.purchasePrice || 0) * b.quantity;
+
+      switch (sortBy) {
+        case 'value': return valueB - valueA;
+        case 'profit': return profitB - profitA;
+        case 'name': return (metaA.name || '').localeCompare(metaB.name || '');
+        case 'date':
+        default:
+          return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
+      }
+    });
+
+    return result;
+  }, [items, metadata, prices, sortBy, filterType]);
 
   const handleRemove = (idProduct) => {
     removeItem(idProduct);
@@ -16,9 +55,38 @@ export default function CollectionPage() {
         <h1 className="app-title">Sammlung</h1>
       </header>
 
+      <div className="controls-bar" style={{ padding: '0 16px 16px', display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+        <div className="select-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+          <Filter size={14} className="text-secondary" />
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '12px', fontWeight: '600', outline: 'none' }}
+          >
+            <option value="all">Alle Typen</option>
+            <option value="Karte">Karten</option>
+            <option value="Sealed">Sealed</option>
+          </select>
+        </div>
+
+        <div className="select-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-secondary)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+          <SortAsc size={14} className="text-secondary" />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{ background: 'transparent', border: 'none', color: 'white', fontSize: '12px', fontWeight: '600', outline: 'none' }}
+          >
+            <option value="date">Datum</option>
+            <option value="value">Wert</option>
+            <option value="profit">Gewinn</option>
+            <option value="name">Name</option>
+          </select>
+        </div>
+      </div>
+
       <div className="product-list" style={{ padding: '0 16px' }}>
-        {items.length > 0 ? (
-          items.map(item => {
+        {filteredAndSortedItems.length > 0 ? (
+          filteredAndSortedItems.map(item => {
             const meta = metadata[item.idProduct] || { idProduct: item.idProduct, name: 'Lade...', set: '', image: '⏳' };
             const price = prices[item.idProduct]?.trend || 0;
             return (
@@ -27,6 +95,7 @@ export default function CollectionPage() {
                 product={meta}
                 price={price}
                 quantity={item.quantity}
+                purchasePrice={item.purchasePrice}
                 onRemove={handleRemove}
               />
             );
