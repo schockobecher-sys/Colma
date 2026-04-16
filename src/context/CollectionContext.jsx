@@ -3,6 +3,7 @@ import { CardmarketService } from '../services/CardmarketService';
 
 const CollectionContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useCollection() {
   const context = useContext(CollectionContext);
   if (!context) {
@@ -93,6 +94,18 @@ export function CollectionProvider({ children }) {
     );
   };
 
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev =>
+      prev.map(item => {
+        if (item.idProduct === idProduct) {
+          const newQty = Math.max(1, item.quantity + delta);
+          return { ...item, quantity: newQty };
+        }
+        return item;
+      })
+    );
+  };
+
   const getTotalValue = () => {
     return items.reduce((total, item) => {
       const currentPrice = prices[item.idProduct]?.trend || 0;
@@ -133,6 +146,7 @@ export function CollectionProvider({ children }) {
         addItem,
         removeItem,
         updateItem,
+        updateQuantity,
         getStats,
         getTotalValue
       }}

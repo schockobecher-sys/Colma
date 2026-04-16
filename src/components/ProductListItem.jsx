@@ -1,13 +1,20 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Minus, Trash2, ChevronRight, Edit2, Check } from 'lucide-react';
+import { useCollection } from '../context/CollectionContext';
 
 export default function ProductListItem({
   product,
   price,
   quantity,
+  purchasePrice: initialPurchasePrice,
   onAdd,
   onRemove,
   isSearch = false
 }) {
+  const { updateQuantity, updateItem } = useCollection();
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [purchasePrice, setPurchasePrice] = useState(initialPurchasePrice || 0);
+
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
   const isCard = product.type === 'Karte';
 
@@ -28,7 +35,24 @@ export default function ProductListItem({
       </div>
       <div className="product-info">
         <div className="product-name">{product.name}</div>
-        <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${quantity} Stück`}</div>
+        <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${product.type}`}</div>
+        {!isSearch && (
+          <div className="quantity-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+            <button
+              onClick={() => updateQuantity(product.idProduct, -1)}
+              style={{ background: 'var(--bg-tertiary)', color: 'white', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Minus size={12} />
+            </button>
+            <span style={{ fontSize: '12px', fontWeight: '700' }}>{quantity}x</span>
+            <button
+              onClick={() => updateQuantity(product.idProduct, 1)}
+              style={{ background: 'var(--bg-tertiary)', color: 'white', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+        )}
       </div>
       <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ textAlign: 'right' }}>
@@ -36,8 +60,40 @@ export default function ProductListItem({
             {(price * (quantity || 1)).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
           </div>
           {!isSearch && (
-            <div className="text-secondary" style={{ fontSize: '10px' }}>
-              {price.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} / Stk
+            <div className="price-meta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', marginTop: '2px' }}>
+              <div className="text-secondary" style={{ fontSize: '10px' }}>
+                Markt: {price.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+              </div>
+              <div className="purchase-price-edit" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {isEditingPrice ? (
+                  <>
+                    <input
+                      type="number"
+                      value={purchasePrice}
+                      onChange={(e) => setPurchasePrice(parseFloat(e.target.value) || 0)}
+                      onBlur={() => {
+                        updateItem(product.idProduct, { purchasePrice });
+                        setIsEditingPrice(false);
+                      }}
+                      autoFocus
+                      style={{ width: '50px', background: 'var(--bg-tertiary)', color: 'white', border: 'none', borderRadius: '4px', fontSize: '10px', padding: '2px 4px', textAlign: 'right' }}
+                    />
+                    <Check size={10} className="text-success" />
+                  </>
+                ) : (
+                  <>
+                    <div className="text-secondary" style={{ fontSize: '10px' }}>
+                      EK: {purchasePrice.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                    </div>
+                    <button
+                      onClick={() => setIsEditingPrice(true)}
+                      style={{ background: 'transparent', color: 'var(--text-secondary)', padding: 0 }}
+                    >
+                      <Edit2 size={10} />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>

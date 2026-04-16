@@ -1,7 +1,8 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, Layout } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState, useMemo } from 'react';
+import germanProducts from '../data/germanProducts.json';
 
 export default function HomePage() {
   const { items, metadata, prices, getStats, lastUpdate } = useCollection();
@@ -46,6 +47,31 @@ export default function HomePage() {
       .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
       .slice(0, 3);
   }, [items]);
+
+  // Derive "Set Progress"
+  const setProgress = useMemo(() => {
+    const sets = {};
+    // Count total products per set from database (only cards)
+    germanProducts.forEach(p => {
+      if (p.type === 'Karte') {
+        if (!sets[p.set]) sets[p.set] = { name: p.set, total: 0, owned: 0 };
+        sets[p.set].total++;
+      }
+    });
+
+    // Count owned products per set
+    items.forEach(item => {
+      const meta = metadata[item.idProduct];
+      if (meta && meta.type === 'Karte' && sets[meta.set]) {
+        sets[meta.set].owned++;
+      }
+    });
+
+    return Object.values(sets)
+      .filter(s => s.owned > 0)
+      .sort((a, b) => (b.owned / b.total) - (a.owned / a.total))
+      .slice(0, 3);
+  }, [items, metadata]);
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
@@ -113,6 +139,37 @@ export default function HomePage() {
                 </div>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {setProgress.length > 0 && (
+        <section style={{ marginBottom: '32px' }}>
+          <div className="section-title">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Layout size={16} className="text-accent" /> Set-Fortschritt
+            </div>
+          </div>
+          <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {setProgress.map(set => (
+              <div key={set.name}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '700', marginBottom: '6px' }}>
+                  <span>{set.name}</span>
+                  <span className="text-accent">{set.owned} / {set.total}</span>
+                </div>
+                <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${(set.owned / set.total) * 100}%`,
+                      background: 'var(--accent)',
+                      boxShadow: '0 0 10px var(--accent)',
+                      transition: 'width 1s ease-out'
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}
