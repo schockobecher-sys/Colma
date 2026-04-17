@@ -1,7 +1,8 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, LayoutGrid } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState, useMemo } from 'react';
+import germanProducts from '../data/germanProducts.json';
 
 export default function HomePage() {
   const { items, metadata, prices, getStats, lastUpdate } = useCollection();
@@ -33,8 +34,9 @@ export default function HomePage() {
     return [...items]
       .map(item => {
         const currentPrice = prices[item.idProduct]?.trend || 0;
-        const gain = currentPrice - (item.purchasePrice || 0);
-        return { ...item, gain };
+        const purchasePrice = item.purchasePrice || currentPrice; // Fallback to current if not set
+        const gain = currentPrice - purchasePrice;
+        return { ...item, gain, currentPrice };
       })
       .sort((a, b) => b.gain - a.gain)
       .slice(0, 3);
@@ -46,6 +48,46 @@ export default function HomePage() {
       .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
       .slice(0, 3);
   }, [items]);
+
+  // Calculate set progress for discovered sets
+  const setProgress = useMemo(() => {
+    // Count items per set in the full database
+    const setCounts = germanProducts.reduce((acc, p) => {
+      if (p.type === 'Karte') {
+        acc[p.set] = (acc[p.set] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    // Find sets that have at least 1 card and are "relevant" (e.g. top 4 by card count or owned cards)
+    const ownedSets = new Set(items.map(item => metadata[item.idProduct]?.set).filter(Boolean));
+    const allSets = Object.keys(setCounts);
+
+    // Sort sets by how many cards we own from them, then by total cards
+    const sortedSets = allSets.sort((a, b) => {
+      const ownedA = items.filter(i => metadata[i.idProduct]?.set === a).length;
+      const ownedB = items.filter(i => metadata[i.idProduct]?.set === b).length;
+      if (ownedB !== ownedA) return ownedB - ownedA;
+      return setCounts[b] - setCounts[a];
+    }).slice(0, 4);
+
+    return sortedSets.map(setName => {
+      const allInSet = germanProducts.filter(p => p.set === setName && p.type === 'Karte');
+      const ownedInSet = items.filter(item => {
+        const meta = metadata[item.idProduct];
+        return meta && meta.set === setName && meta.type === 'Karte';
+      });
+
+      const percent = allInSet.length > 0 ? (ownedInSet.length / allInSet.length) * 100 : 0;
+
+      return {
+        name: setName,
+        total: allInSet.length,
+        owned: ownedInSet.length,
+        percent: Math.round(percent)
+      };
+    });
+  }, [items, metadata]);
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
@@ -85,6 +127,31 @@ export default function HomePage() {
         </div>
       </div>
 
+      <section style={{ marginBottom: '32px' }}>
+        <div className="section-title">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <LayoutGrid size={16} className="text-accent" /> Set Fortschritt
+          </div>
+        </div>
+        <div className="grid-2" style={{ gap: '12px' }}>
+          {setProgress.map(set => (
+            <div key={set.name} className="stat-box" style={{ padding: '16px' }}>
+              <div className="stat-box-inner">
+                <div className="stat-label" style={{ marginBottom: 0 }}>{set.name}</div>
+                <div style={{ fontSize: '12px', fontWeight: '800', color: 'var(--accent)' }}>{set.percent}%</div>
+              </div>
+              <div className="progress-bar-container">
+                <div className="progress-bar-fill" style={{ width: `${set.percent}%` }}></div>
+              </div>
+              <div className="set-progress-meta">{set.owned} / {set.total} Karten</div>
+            </div>
+          ))}
+          {setProgress.length === 0 && (
+            <div className="text-secondary" style={{ fontSize: '12px', gridColumn: 'span 2' }}>Keine Sets gefunden.</div>
+          )}
+        </div>
+      </section>
+
       {topPerformers.length > 0 && (
         <section style={{ marginBottom: '32px' }}>
           <div className="section-title">
@@ -95,20 +162,22 @@ export default function HomePage() {
           <div className="product-list">
             {topPerformers.map(item => {
               const meta = metadata[item.idProduct] || { name: 'Lade...', set: '', idProduct: item.idProduct };
-              const currentPrice = prices[item.idProduct]?.trend || 0;
-              const gain = currentPrice - (item.purchasePrice || 0);
+              const currentPrice = item.currentPrice || 0;
+              const gain = item.gain || 0;
               return (
-                <div key={item.idProduct} className="product-item">
-                  <div className="product-image">
-                    <img src={`https://static.cardmarket.com/img/products/1/${item.idProduct}.jpg`} alt="" />
-                    <div className="holo-effect"></div>
-                  </div>
-                  <div className="product-info">
-                    <div className="product-name">{meta.name}</div>
-                    <div className="product-meta">Gain: <span className={gain >= 0 ? 'text-success' : 'text-danger'}>{gain >= 0 ? '+' : ''}{gain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div>
-                  </div>
-                  <div className="product-price">
-                    <div className="price-now">{currentPrice.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
+                <div key={item.idProduct} className="product-item-container">
+                  <div className="product-item">
+                    <div className="product-image">
+                      <img src={`https://static.cardmarket.com/img/products/1/${item.idProduct}.jpg`} alt="" />
+                      <div className="holo-effect"></div>
+                    </div>
+                    <div className="product-info">
+                      <div className="product-name">{meta.name}</div>
+                      <div className="product-meta">Gain: <span className={gain >= 0 ? 'text-success' : 'text-danger'}>{gain >= 0 ? '+' : ''}{gain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div>
+                    </div>
+                    <div className="product-price">
+                      <div className="price-now">{currentPrice.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
+                    </div>
                   </div>
                 </div>
               );
@@ -129,16 +198,18 @@ export default function HomePage() {
             const meta = metadata[item.idProduct] || { name: 'Lade...', set: '', idProduct: item.idProduct };
             const price = prices[item.idProduct]?.trend || 0;
             return (
-              <div key={item.idProduct} className="product-item">
-                <div className="product-image">
-                   <img src={`https://static.cardmarket.com/img/products/1/${item.idProduct}.jpg`} alt="" />
-                </div>
-                <div className="product-info">
-                  <div className="product-name">{meta.name}</div>
-                  <div className="product-meta">{meta.set} • {item.quantity}x</div>
-                </div>
-                <div className="product-price">
-                  <div className="price-now">{(price * item.quantity).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
+              <div key={item.idProduct} className="product-item-container">
+                <div className="product-item">
+                  <div className="product-image">
+                     <img src={`https://static.cardmarket.com/img/products/1/${item.idProduct}.jpg`} alt="" />
+                  </div>
+                  <div className="product-info">
+                    <div className="product-name">{meta.name}</div>
+                    <div className="product-meta">{meta.set} • {item.quantity}x</div>
+                  </div>
+                  <div className="product-price">
+                    <div className="price-now">{(price * item.quantity).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
+                  </div>
                 </div>
               </div>
             );
@@ -153,14 +224,16 @@ export default function HomePage() {
 
       <section>
         <div className="section-title">Schnellzugriff</div>
-        <Link to="/cards" className="product-item" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <div className="btn-icon"><Plus size={24} /></div>
-          <div className="product-info">
-            <div className="product-name">Sammlung erweitern</div>
-            <div className="product-meta">Neue Produkte in der Datenbank suchen</div>
-          </div>
-          <ChevronRight size={20} className="text-secondary" />
-        </Link>
+        <div className="product-item-container">
+          <Link to="/cards" className="product-item" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div className="btn-icon"><Plus size={24} /></div>
+            <div className="product-info">
+              <div className="product-name">Sammlung erweitern</div>
+              <div className="product-meta">Neue Produkte in der Datenbank suchen</div>
+            </div>
+            <ChevronRight size={20} className="text-secondary" />
+          </Link>
+        </div>
       </section>
     </div>
   );
