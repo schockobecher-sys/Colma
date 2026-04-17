@@ -128,20 +128,131 @@
   gap: 16px;
 }
 
+.product-item-container {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.product-item-container.expanded {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 20px rgba(255, 203, 5, 0.1);
+}
+
 .product-item {
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 14px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  border-radius: 18px;
-  border: 1px solid var(--glass-border);
+  background: transparent;
   transition: transform 0.2s ease;
+  cursor: pointer;
+}
+
+.product-item-container.is-search .product-item {
+  cursor: default;
 }
 
 .product-item:active {
-  transform: scale(0.98);
+  transform: scale(0.99);
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.qty-btn {
+  background: var(--bg-secondary);
+  border: none;
+  color: white;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qty-value {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.product-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.price-info {
+  text-align: right;
+}
+
+.price-unit {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.expand-indicator {
+  color: var(--text-secondary);
+}
+
+.product-details {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--glass-border);
+  margin-top: -4px;
+}
+
+.price-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+.price-detail-item {
+  text-align: center;
+}
+
+.price-detail-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.price-detail-value {
+  font-weight: 700;
+}
+
+.price-detail-value.trend {
+  color: var(--accent);
+}
+
+.details-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.btn-remove {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.1);
+  color: rgb(239, 68, 68);
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .product-image {
@@ -213,6 +324,105 @@
 .price-now {
   font-size: 15px;
   font-weight: 800;
+}
+
+/* Dashboard / Home improvements */
+.sync-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-box-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-bar-container {
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+}
+
+.set-progress-meta {
+  font-size: 10px;
+  margin-top: 6px;
+  color: var(--text-secondary);
+}
+
+/* Filter bar improvements */
+.filter-sort-bar {
+  padding: 0 16px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter-sort-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--glass-bg);
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.filter-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+/* Search bar improvements */
+.search-container {
+  padding: 0 16px;
+  margin-bottom: 20px;
+}
+
+.search-input-wrapper {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-input {
+  background: transparent;
+  border: none;
+  color: white;
+  flex: 1;
+  outline: none;
+  font-size: 16px;
+}
+
+.results-list {
+  padding: 0 16px;
+}
+
+.set-group {
+  margin-bottom: 24px;
 }
 
 /* Custom buttons */
