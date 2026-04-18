@@ -1,32 +1,19 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
+import germanProducts from '../data/germanProducts.json';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const { items, metadata, prices, getStats, lastUpdate, isSyncing, fetchPrices } = useCollection();
 
   const stats = getStats();
 
-  // Status should be derived or set based on actual data
-  const derivedSyncStatus = useMemo(() => {
-    const lastFetch = localStorage.getItem('colma_last_fetch_time');
-    const now = new Date().getTime();
-
-    if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 5) {
-      return 'success';
-    }
-    if (Object.keys(prices).length > 0) {
-      return 'success';
-    }
-    return 'loading';
-  }, [prices]);
-
-  // If we still want to use state for some reason (e.g. manual refresh)
-  useEffect(() => {
-    setSyncStatus(derivedSyncStatus);
-  }, [derivedSyncStatus]);
+  const syncStatus = useMemo(() => {
+    if (isSyncing) return 'loading';
+    if (Object.keys(prices).length > 0) return 'success';
+    return 'idle';
+  }, [isSyncing, prices]);
 
   // Derive "Top Performers" (highest gain per item)
   const topPerformers = useMemo(() => {
@@ -47,17 +34,55 @@ export default function HomePage() {
       .slice(0, 3);
   }, [items]);
 
+  // Calculate Set Progress
+  const setProgress = useMemo(() => {
+    const sets = {};
+    // Group all products by set
+    germanProducts.forEach(p => {
+      if (!sets[p.set]) {
+        sets[p.set] = { total: 0, owned: 0 };
+      }
+      sets[p.set].total++;
+    });
+
+    // Count owned products per set
+    items.forEach(item => {
+      const product = germanProducts.find(p => p.idProduct === item.idProduct);
+      if (product && sets[product.set]) {
+        sets[product.set].owned++;
+      }
+    });
+
+    return Object.entries(sets)
+      .map(([name, counts]) => ({
+        name,
+        percent: Math.round((counts.owned / counts.total) * 100),
+        owned: counts.owned,
+        total: counts.total
+      }))
+      .filter(s => s.owned > 0)
+      .sort((a, b) => b.percent - a.percent)
+      .slice(0, 3);
+  }, [items]);
+
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
   return (
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
-        </div>
+        <button
+          className="sync-indicator"
+          onClick={() => fetchPrices(true)}
+          disabled={isSyncing}
+          title={`Zuletzt aktualisiert: ${formattedDate}. Klicken zum Aktualisieren.`}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center' }}
+        >
+          {syncStatus === 'loading' && <RefreshCw size={18} className="text-secondary animate-spin" />}
+          {syncStatus === 'success' && <CheckCircle2 size={18} className="text-success" />}
+          {syncStatus === 'error' && <AlertCircle size={18} className="text-danger" />}
+          {syncStatus === 'idle' && <RefreshCw size={18} className="text-secondary" />}
+        </button>
       </header>
 
       <div className="portfolio-card">
@@ -85,6 +110,37 @@ export default function HomePage() {
         </div>
       </div>
 
+      {setProgress.length > 0 && (
+        <section style={{ marginBottom: '32px' }}>
+          <div className="section-title">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BookOpen size={16} className="text-accent" /> Set-Fortschritt
+            </div>
+          </div>
+          <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {setProgress.map(set => (
+              <div key={set.name}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
+                  <span style={{ fontWeight: 700 }}>{set.name}</span>
+                  <span className="text-secondary">{set.owned}/{set.total} ({set.percent}%)</span>
+                </div>
+                <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${set.percent}%`,
+                      background: 'var(--accent)',
+                      boxShadow: '0 0 10px var(--accent)',
+                      transition: 'width 1s ease-out'
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {topPerformers.length > 0 && (
         <section style={{ marginBottom: '32px' }}>
           <div className="section-title">
@@ -105,7 +161,12 @@ export default function HomePage() {
                   </div>
                   <div className="product-info">
                     <div className="product-name">{meta.name}</div>
-                    <div className="product-meta">Gain: <span className={gain >= 0 ? 'text-success' : 'text-danger'}>{gain >= 0 ? '+' : ''}{gain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div>
+                    <div className="product-meta" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {gain >= 0 ? <TrendingUp size={12} className="text-success" /> : <TrendingDown size={12} className="text-danger" />}
+                      <span className={gain >= 0 ? 'text-success' : 'text-danger'} style={{ fontWeight: 700 }}>
+                        {gain >= 0 ? '+' : ''}{gain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                      </span>
+                    </div>
                   </div>
                   <div className="product-price">
                     <div className="price-now">{currentPrice.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>

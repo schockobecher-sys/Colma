@@ -64,8 +64,16 @@ export default function CardsPage() {
               />
             ))
           ) : (
-            <div className="text-center text-secondary" style={{ marginTop: '40px' }}>
-              {searchTerm.length > 2 ? 'Keine Ergebnisse gefunden' : 'Gib mindestens 3 Zeichen ein (z.B. Glurak, 151)'}
+            <div className="text-center text-secondary glass-panel" style={{ marginTop: '40px', padding: '40px 20px' }}>
+              <Search size={48} style={{ margin: '0 auto 16px', opacity: 0.2 }} />
+              <div style={{ fontWeight: 700, color: 'white', marginBottom: '8px' }}>
+                {searchTerm.length > 2 ? 'Keine Ergebnisse' : 'Bereit zum Suchen?'}
+              </div>
+              <p style={{ fontSize: '14px' }}>
+                {searchTerm.length > 2
+                  ? `Wir konnten nichts für "${searchTerm}" finden.`
+                  : 'Gib mindestens 3 Zeichen ein (z.B. Glurak, 151), um Karten und Produkte zu finden.'}
+              </p>
             </div>
           )}
         </div>
