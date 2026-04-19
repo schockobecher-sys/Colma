@@ -1,32 +1,14 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState, useMemo } from 'react';
+import germanProducts from '../data/germanProducts.json';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const { items, metadata, prices, getStats, lastUpdate, fetchPrices } = useCollection();
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const stats = getStats();
-
-  // Status should be derived or set based on actual data
-  const derivedSyncStatus = useMemo(() => {
-    const lastFetch = localStorage.getItem('colma_last_fetch_time');
-    const now = new Date().getTime();
-
-    if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 5) {
-      return 'success';
-    }
-    if (Object.keys(prices).length > 0) {
-      return 'success';
-    }
-    return 'loading';
-  }, [prices]);
-
-  // If we still want to use state for some reason (e.g. manual refresh)
-  useEffect(() => {
-    setSyncStatus(derivedSyncStatus);
-  }, [derivedSyncStatus]);
 
   // Derive "Top Performers" (highest gain per item)
   const topPerformers = useMemo(() => {
@@ -47,17 +29,55 @@ export default function HomePage() {
       .slice(0, 3);
   }, [items]);
 
+  const handleManualRefresh = async () => {
+    setIsSyncing(true);
+    await fetchPrices(true); // Force refresh
+    setTimeout(() => setIsSyncing(false), 800);
+  };
+
+  // Derive Set Progress
+  const setProgress = useMemo(() => {
+    const sets = {};
+    germanProducts.forEach(p => {
+      if (!sets[p.set]) {
+        sets[p.set] = { total: 0, owned: 0 };
+      }
+      sets[p.set].total++;
+      if (items.some(item => item.idProduct === p.idProduct)) {
+        sets[p.set].owned++;
+      }
+    });
+
+    return Object.entries(sets)
+      .map(([name, counts]) => ({
+        name,
+        ...counts,
+        percent: (counts.owned / counts.total) * 100
+      }))
+      .filter(s => s.owned > 0)
+      .sort((a, b) => b.percent - a.percent)
+      .slice(0, 3);
+  }, [items]);
+
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
   return (
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
-        </div>
+        <button
+          className="sync-indicator"
+          onClick={handleManualRefresh}
+          disabled={isSyncing}
+          title={`Zuletzt aktualisiert: ${formattedDate}. Klicken zum Aktualisieren.`}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          {isSyncing ? (
+            <RefreshCw size={20} className="text-accent animate-spin" />
+          ) : (
+            <CheckCircle2 size={20} className="text-success" />
+          )}
+        </button>
       </header>
 
       <div className="portfolio-card">
@@ -84,6 +104,37 @@ export default function HomePage() {
           <div className="stat-value">{stats.itemCount}</div>
         </div>
       </div>
+
+      {setProgress.length > 0 && (
+        <section style={{ marginBottom: '32px' }}>
+          <div className="section-title">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Layers size={16} className="text-accent" /> Set-Fortschritt
+            </div>
+          </div>
+          <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {setProgress.map(set => (
+              <div key={set.name}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', fontWeight: '700' }}>
+                  <span>{set.name}</span>
+                  <span className="text-secondary">{set.owned} / {set.total}</span>
+                </div>
+                <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${set.percent}%`,
+                      background: 'var(--accent)',
+                      boxShadow: '0 0 10px var(--accent)',
+                      transition: 'width 1s ease-out'
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {topPerformers.length > 0 && (
         <section style={{ marginBottom: '32px' }}>
