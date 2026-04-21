@@ -1,4 +1,5 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Trash2, ChevronRight } from 'lucide-react';
+import { useCollection } from '../context/CollectionContext';
 
 export default function ProductListItem({
   product,
@@ -8,6 +9,7 @@ export default function ProductListItem({
   onRemove,
   isSearch = false
 }) {
+  const { updateQuantity } = useCollection();
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
   const isCard = product.type === 'Karte';
 
@@ -28,7 +30,25 @@ export default function ProductListItem({
       </div>
       <div className="product-info">
         <div className="product-name">{product.name}</div>
-        <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${quantity} Stück`}</div>
+        <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); updateQuantity(product.idProduct, -1); }}
+              aria-label="Menge verringern"
+              style={{ background: 'var(--bg-tertiary)', border: 'none', color: 'white', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            >
+              <Minus size={12} />
+            </button>
+            {quantity} Stück
+            <button
+              onClick={(e) => { e.stopPropagation(); updateQuantity(product.idProduct, 1); }}
+              aria-label="Menge erhöhen"
+              style={{ background: 'var(--bg-tertiary)', border: 'none', color: 'white', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            >
+              <Plus size={12} />
+            </button>
+          </span>
+        )}</div>
       </div>
       <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ textAlign: 'right' }}>
