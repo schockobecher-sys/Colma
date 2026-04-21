@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { useCollection } from '../context/CollectionContext';
+import { useToast } from '../components/Toast';
 import { CardmarketService } from '../services/CardmarketService';
 import ProductListItem from '../components/ProductListItem';
 import FeedbackService from '../services/FeedbackService';
@@ -8,6 +9,7 @@ import FeedbackService from '../services/FeedbackService';
 export default function CardsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const { addItem, prices } = useCollection();
+  const { showToast } = useToast();
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Debouncing logic
@@ -26,8 +28,7 @@ export default function CardsPage() {
     const price = prices[product.idProduct]?.trend || 0;
     addItem(product.idProduct, 1, price);
     FeedbackService.triggerAdd();
-    // Use a non-blocking notification instead of alert for better UX
-    console.log(`${product.name} hinzugefügt`);
+    showToast(`${product.name} hinzugefügt`);
   };
 
   return (

@@ -3,30 +3,17 @@ import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState, useMemo } from 'react';
 
+import germanProducts from '../data/germanProducts.json';
+
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const { items, metadata, prices, getStats, lastUpdate, isSyncing, fetchPrices } = useCollection();
 
   const stats = getStats();
 
-  // Status should be derived or set based on actual data
-  const derivedSyncStatus = useMemo(() => {
-    const lastFetch = localStorage.getItem('colma_last_fetch_time');
-    const now = new Date().getTime();
-
-    if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 5) {
-      return 'success';
-    }
-    if (Object.keys(prices).length > 0) {
-      return 'success';
-    }
-    return 'loading';
-  }, [prices]);
-
-  // If we still want to use state for some reason (e.g. manual refresh)
-  useEffect(() => {
-    setSyncStatus(derivedSyncStatus);
-  }, [derivedSyncStatus]);
+  const syncStatus = useMemo(() => {
+    if (isSyncing) return 'loading';
+    return 'success';
+  }, [isSyncing]);
 
   // Derive "Top Performers" (highest gain per item)
   const topPerformers = useMemo(() => {
@@ -49,15 +36,40 @@ export default function HomePage() {
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
+  const setProgress = useMemo(() => {
+    const sets = [...new Set(germanProducts.map(p => p.set))].filter(s => s !== 'Promos');
+    return sets.map(setName => {
+      const totalInSet = germanProducts.filter(p => p.set === setName).length;
+      const ownedInSet = items.filter(item => {
+        const meta = metadata[item.idProduct];
+        return meta && meta.set === setName;
+      }).length;
+      return {
+        name: setName,
+        owned: ownedInSet,
+        total: totalInSet,
+        percent: (ownedInSet / totalInSet) * 100
+      };
+    }).filter(s => s.owned > 0).sort((a, b) => b.percent - a.percent);
+  }, [items, metadata]);
+
   return (
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
-        </div>
+        <button
+          className="sync-indicator"
+          onClick={() => fetchPrices(true)}
+          disabled={isSyncing}
+          title={`Zuletzt aktualisiert: ${formattedDate}`}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+        >
+          {syncStatus === 'loading' ? (
+            <RefreshCw size={16} className="text-secondary animate-spin" />
+          ) : (
+            <RefreshCw size={16} className="text-success" />
+          )}
+        </button>
       </header>
 
       <div className="portfolio-card">
@@ -150,6 +162,26 @@ export default function HomePage() {
           )}
         </div>
       </section>
+
+      {setProgress.length > 0 && (
+        <section style={{ marginBottom: '32px' }}>
+          <div className="section-title">Set-Fortschritt</div>
+          <div className="grid-2">
+            {setProgress.map(set => (
+              <div key={set.name} className="stat-box">
+                <div className="stat-label">{set.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: `${set.percent}%`, height: '100%', background: 'var(--accent)', borderRadius: '3px' }}></div>
+                  </div>
+                  <div style={{ fontSize: '10px', fontWeight: 'bold', minWidth: '35px' }}>{Math.round(set.percent)}%</div>
+                </div>
+                <div className="text-secondary" style={{ fontSize: '10px', marginTop: '4px' }}>{set.owned} / {set.total} Karten</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <div className="section-title">Schnellzugriff</div>
