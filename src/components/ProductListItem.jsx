@@ -1,4 +1,6 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Trash2, ChevronRight, Check } from 'lucide-react';
+import { useState } from 'react';
+import { useCollection } from '../context/CollectionContext';
 
 export default function ProductListItem({
   product,
@@ -8,8 +10,23 @@ export default function ProductListItem({
   onRemove,
   isSearch = false
 }) {
+  const { updateQuantity } = useCollection();
+  const [isAdded, setIsAdded] = useState(false);
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
   const isCard = product.type === 'Karte';
+
+  const handleAddClick = () => {
+    if (onAdd) {
+      onAdd(product);
+      setIsAdded(true);
+      setTimeout(() => setIsAdded(false), 2000);
+    }
+  };
+
+  const handleUpdateQuantity = (e, delta) => {
+    e.stopPropagation();
+    updateQuantity(product.idProduct, delta);
+  };
 
   return (
     <div className="product-item">
@@ -28,7 +45,10 @@ export default function ProductListItem({
       </div>
       <div className="product-info">
         <div className="product-name">{product.name}</div>
-        <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${quantity} Stück`}</div>
+        <div className="product-meta">
+          {product.set}
+          {!isSearch && ` • ${quantity} Stk`}
+        </div>
       </div>
       <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ textAlign: 'right' }}>
@@ -44,21 +64,43 @@ export default function ProductListItem({
 
         {isSearch ? (
           <button
-            className="btn-icon"
-            onClick={() => onAdd && onAdd(product)}
+            className={`btn-icon ${isAdded ? 'btn-success' : ''}`}
+            onClick={handleAddClick}
+            disabled={isAdded}
+            aria-label="Zum Portfolio hinzufügen"
           >
-            <Plus size={20} />
-          </button>
-        ) : onRemove ? (
-          <button
-            className="btn-icon"
-            onClick={() => onRemove(product.idProduct)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto', boxShadow: 'none' }}
-          >
-            <Trash2 size={18} />
+            {isAdded ? <Check size={20} /> : <Plus size={20} />}
           </button>
         ) : (
-          <ChevronRight size={16} className="text-secondary" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <button
+              className="qty-btn"
+              onClick={(e) => handleUpdateQuantity(e, -1)}
+              aria-label="Menge verringern"
+            >
+              <Minus size={14} />
+            </button>
+            <button
+              className="qty-btn"
+              onClick={(e) => handleUpdateQuantity(e, 1)}
+              aria-label="Menge erhöhen"
+            >
+              <Plus size={14} />
+            </button>
+            {onRemove && (
+              <button
+                className="btn-icon-simple"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove(product.idProduct);
+                }}
+                style={{ color: 'var(--danger)' }}
+                aria-label="Entfernen"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

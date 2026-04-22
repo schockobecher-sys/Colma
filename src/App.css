@@ -137,7 +137,12 @@
   backdrop-filter: blur(10px);
   border-radius: 18px;
   border: 1px solid var(--glass-border);
-  transition: transform 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.product-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .product-item:active {
@@ -169,10 +174,13 @@
     rgba(255, 255, 255, 0.1) 45%,
     rgba(255, 255, 255, 0.2) 50%,
     rgba(255, 255, 255, 0.1) 55%,
-    rgba(255, 255, 255, 0) 100%);
-  background-size: 200% 200%;
+    rgba(255, 255, 255, 0) 100%),
+    linear-gradient(45deg, rgba(255,0,0,0.1), rgba(0,255,0,0.1), rgba(0,0,255,0.1));
+  background-size: 200% 200%, 100% 100%;
   animation: holo 3s infinite linear;
   pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0.8;
 }
 
 @keyframes holo {
@@ -230,4 +238,56 @@
 
 .btn-icon svg {
   stroke-width: 3px;
+}
+
+.btn-success {
+  background: var(--success) !important;
+  box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3) !important;
+}
+
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--glass-border);
+}
+
+.btn-icon-simple {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.sync-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.sync-btn:active {
+  background: rgba(255, 255, 255, 0.1);
+  transform: rotate(180deg);
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
