@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, Info } from 'lucide-react';
 import { useCollection } from '../context/CollectionContext';
 import { CardmarketService } from '../services/CardmarketService';
 import ProductListItem from '../components/ProductListItem';
@@ -22,12 +22,21 @@ export default function CardsPage() {
     return CardmarketService.searchProducts(debouncedSearch);
   }, [debouncedSearch]);
 
+  const groupedResults = useMemo(() => {
+    const groups = {};
+    searchResults.forEach(result => {
+      if (!groups[result.set]) {
+        groups[result.set] = [];
+      }
+      groups[result.set].push(result);
+    });
+    return groups;
+  }, [searchResults]);
+
   const handleAdd = (product) => {
     const price = prices[product.idProduct]?.trend || 0;
     addItem(product.idProduct, 1, price);
     FeedbackService.triggerAdd();
-    // Use a non-blocking notification instead of alert for better UX
-    console.log(`${product.name} hinzugefügt`);
   };
 
   return (
@@ -51,24 +60,40 @@ export default function CardsPage() {
       </div>
 
       <div className="results-list" style={{ padding: '0 16px' }}>
-        <div className="section-title">Ergebnisse</div>
-        <div className="product-list">
-          {searchResults.length > 0 ? (
-            searchResults.map(result => (
-              <ProductListItem
-                key={result.idProduct}
-                product={result}
-                price={prices[result.idProduct]?.trend || 0}
-                onAdd={handleAdd}
-                isSearch={true}
-              />
-            ))
-          ) : (
-            <div className="text-center text-secondary" style={{ marginTop: '40px' }}>
-              {searchTerm.length > 2 ? 'Keine Ergebnisse gefunden' : 'Gib mindestens 3 Zeichen ein (z.B. Glurak, 151)'}
-            </div>
-          )}
-        </div>
+        {Object.keys(groupedResults).length > 0 ? (
+          Object.entries(groupedResults).map(([setName, products]) => (
+            <section key={setName} style={{ marginBottom: '24px' }}>
+              <div className="section-title" style={{ fontSize: '14px', opacity: 0.8 }}>{setName}</div>
+              <div className="product-list">
+                {products.map(result => (
+                  <ProductListItem
+                    key={result.idProduct}
+                    product={result}
+                    price={prices[result.idProduct]?.trend || 0}
+                    onAdd={handleAdd}
+                    isSearch={true}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
+        ) : (
+          <div className="text-center text-secondary" style={{ marginTop: '60px', padding: '0 20px' }}>
+            {searchTerm.length > 2 ? (
+              <>
+                 <div className="pokeball-loader" style={{ animation: 'none', opacity: 0.3, marginBottom: '20px' }}></div>
+                 <p style={{ fontWeight: 700, color: 'white' }}>Keine Ergebnisse gefunden</p>
+                 <p style={{ fontSize: '14px' }}>Versuche es mit einem anderen Suchbegriff.</p>
+              </>
+            ) : (
+              <>
+                <Info size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
+                <p style={{ fontWeight: 700, color: 'white' }}>Bereit zur Suche</p>
+                <p style={{ fontSize: '14px' }}>Gib mindestens 3 Zeichen ein (z.B. Glurak, 151), um in der Datenbank zu suchen.</p>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

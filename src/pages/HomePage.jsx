@@ -1,7 +1,8 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, Layout } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState, useMemo } from 'react';
+import germanProducts from '../data/germanProducts.json';
 
 export default function HomePage() {
   const { items, metadata, prices, getStats, lastUpdate } = useCollection();
@@ -9,7 +10,6 @@ export default function HomePage() {
 
   const stats = getStats();
 
-  // Status should be derived or set based on actual data
   const derivedSyncStatus = useMemo(() => {
     const lastFetch = localStorage.getItem('colma_last_fetch_time');
     const now = new Date().getTime();
@@ -23,18 +23,19 @@ export default function HomePage() {
     return 'loading';
   }, [prices]);
 
-  // If we still want to use state for some reason (e.g. manual refresh)
   useEffect(() => {
     setSyncStatus(derivedSyncStatus);
   }, [derivedSyncStatus]);
 
-  // Derive "Top Performers" (highest gain per item)
+  // Derive "Top Performers"
   const topPerformers = useMemo(() => {
     return [...items]
       .map(item => {
         const currentPrice = prices[item.idProduct]?.trend || 0;
-        const gain = currentPrice - (item.purchasePrice || 0);
-        return { ...item, gain };
+        const purchasePrice = item.purchasePrice || 0;
+        const gain = currentPrice - purchasePrice;
+        const gainPercent = purchasePrice > 0 ? (gain / purchasePrice) * 100 : 0;
+        return { ...item, gain, gainPercent };
       })
       .sort((a, b) => b.gain - a.gain)
       .slice(0, 3);
@@ -45,6 +46,29 @@ export default function HomePage() {
     return [...items]
       .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
       .slice(0, 3);
+  }, [items]);
+
+  // Calculate Set Progress
+  const setProgress = useMemo(() => {
+    const sets = {};
+    germanProducts.forEach(p => {
+      if (!sets[p.set]) {
+        sets[p.set] = { total: 0, owned: 0 };
+      }
+      sets[p.set].total += 1;
+      if (items.some(item => item.idProduct === p.idProduct)) {
+        sets[p.set].owned += 1;
+      }
+    });
+
+    return Object.entries(sets)
+      .map(([name, data]) => ({
+        name,
+        ...data,
+        percent: (data.owned / data.total) * 100
+      }))
+      .filter(s => s.owned > 0)
+      .sort((a, b) => b.percent - a.percent);
   }, [items]);
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
@@ -67,7 +91,9 @@ export default function HomePage() {
         </div>
         <div className={`portfolio-change ${stats.totalProfit >= 0 ? 'text-success' : 'text-danger'}`}>
           {stats.totalProfit >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-          {stats.totalProfit >= 0 ? '+' : ''}{stats.totalProfit.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} ({stats.profitPercent.toFixed(1)}%)
+          <span style={{ fontWeight: 800 }}>
+            {stats.totalProfit >= 0 ? '+' : ''}{stats.totalProfit.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} ({stats.profitPercent.toFixed(1)}%)
+          </span>
         </div>
         <div className="text-secondary" style={{ fontSize: '10px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Clock size={10} /> Stand: {formattedDate} (Cardmarket)
@@ -85,6 +111,35 @@ export default function HomePage() {
         </div>
       </div>
 
+      {setProgress.length > 0 && (
+        <section style={{ marginBottom: '32px' }}>
+          <div className="section-title">
+             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Layout size={16} className="text-accent" /> Set-Fortschritt
+            </div>
+          </div>
+          <div className="set-progress-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {setProgress.slice(0, 3).map(set => (
+              <div key={set.name} className="glass-panel" style={{ padding: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', fontWeight: 700 }}>
+                  <span>{set.name}</span>
+                  <span className="text-accent">{set.owned} / {set.total}</span>
+                </div>
+                <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${set.percent}%`,
+                    background: 'var(--accent)',
+                    boxShadow: '0 0 10px var(--accent)',
+                    borderRadius: '3px'
+                  }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {topPerformers.length > 0 && (
         <section style={{ marginBottom: '32px' }}>
           <div className="section-title">
@@ -96,7 +151,7 @@ export default function HomePage() {
             {topPerformers.map(item => {
               const meta = metadata[item.idProduct] || { name: 'Lade...', set: '', idProduct: item.idProduct };
               const currentPrice = prices[item.idProduct]?.trend || 0;
-              const gain = currentPrice - (item.purchasePrice || 0);
+              const gain = item.gain;
               return (
                 <div key={item.idProduct} className="product-item">
                   <div className="product-image">
@@ -105,10 +160,18 @@ export default function HomePage() {
                   </div>
                   <div className="product-info">
                     <div className="product-name">{meta.name}</div>
-                    <div className="product-meta">Gain: <span className={gain >= 0 ? 'text-success' : 'text-danger'}>{gain >= 0 ? '+' : ''}{gain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div>
+                    <div className="product-meta">
+                      Gewinn: <span className={gain >= 0 ? 'text-success' : 'text-danger'} style={{ fontWeight: 800 }}>
+                        {gain >= 0 ? '+' : ''}{gain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                      </span>
+                    </div>
                   </div>
                   <div className="product-price">
                     <div className="price-now">{currentPrice.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
+                    <div className={gain >= 0 ? 'text-success' : 'text-danger'} style={{ fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '2px' }}>
+                      {gain >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                      {Math.abs(item.gainPercent).toFixed(1)}%
+                    </div>
                   </div>
                 </div>
               );
