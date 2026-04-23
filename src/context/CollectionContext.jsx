@@ -23,6 +23,12 @@ export function CollectionProvider({ children }) {
   });
   const [metadata, setMetadata] = useState({});
   const [lastUpdate, setLastUpdate] = useState(localStorage.getItem('colma_last_update') || '');
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     localStorage.setItem('colma_collection', JSON.stringify(items));
@@ -66,12 +72,14 @@ export function CollectionProvider({ children }) {
     setItems(prev => {
       const existing = prev.find(item => item.idProduct === idProduct);
       if (existing) {
+        showToast('Menge aktualisiert', 'success');
         return prev.map(item =>
           item.idProduct === idProduct
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
+      showToast('Zur Sammlung hinzugefügt', 'success');
       return [...prev, {
         idProduct,
         quantity,
@@ -83,6 +91,19 @@ export function CollectionProvider({ children }) {
 
   const removeItem = (idProduct) => {
     setItems(prev => prev.filter(item => item.idProduct !== idProduct));
+    showToast('Aus Sammlung entfernt', 'info');
+  };
+
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev => {
+      return prev.map(item => {
+        if (item.idProduct === idProduct) {
+          const newQuantity = Math.max(1, item.quantity + delta);
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      });
+    });
   };
 
   const updateItem = (idProduct, updates) => {
@@ -133,8 +154,11 @@ export function CollectionProvider({ children }) {
         addItem,
         removeItem,
         updateItem,
+        updateQuantity,
         getStats,
-        getTotalValue
+        getTotalValue,
+        toast,
+        showToast
       }}
     >
       {children}

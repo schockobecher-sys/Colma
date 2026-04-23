@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CollectionProvider } from './context/CollectionContext';
 import Navbar from './components/Navbar';
+import Toast from './components/Toast';
 import HomePage from './pages/HomePage';
 import CardsPage from './pages/CardsPage';
 import CollectionPage from './pages/CollectionPage';
@@ -13,7 +14,8 @@ function App() {
       <Router>
         <div className="app">
           <Navbar />
-          <main className="main-content">
+          <Toast />
+          <main className="main-content page-transition">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/cards" element={<CardsPage />} />
