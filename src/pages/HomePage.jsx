@@ -2,6 +2,7 @@ import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, 
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState, useMemo } from 'react';
+import germanProducts from '../data/germanProducts.json';
 
 export default function HomePage() {
   const { items, metadata, prices, getStats, lastUpdate } = useCollection();
@@ -47,6 +48,25 @@ export default function HomePage() {
       .slice(0, 3);
   }, [items]);
 
+  const setProgress = useMemo(() => {
+    const sets = {};
+    // Only count "Karte" for progress, ignore Sealed
+    const cardsOnly = germanProducts.filter(p => p.type === 'Karte');
+
+    cardsOnly.forEach(p => {
+      if (!sets[p.set]) sets[p.set] = { total: 0, owned: 0 };
+      sets[p.set].total++;
+      if (items.some(item => item.idProduct === p.idProduct)) {
+        sets[p.set].owned++;
+      }
+    });
+
+    return Object.entries(sets)
+      .map(([name, data]) => ({ name, ...data, percent: (data.owned / data.total) * 100 }))
+      .filter(s => s.owned > 0)
+      .sort((a, b) => b.percent - a.percent);
+  }, [items]);
+
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
   return (
@@ -84,6 +104,29 @@ export default function HomePage() {
           <div className="stat-value">{stats.itemCount}</div>
         </div>
       </div>
+
+      {setProgress.length > 0 && (
+        <section style={{ marginBottom: '32px' }}>
+          <div className="section-title">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircle2 size={16} className="text-success" /> Set Fortschritt
+            </div>
+          </div>
+          <div className="progress-container">
+            {setProgress.map(set => (
+              <div key={set.name} className="glass-panel" style={{ padding: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>
+                  <span>{set.name}</span>
+                  <span className="text-accent">{set.owned} / {set.total}</span>
+                </div>
+                <div className="progress-bar-bg">
+                  <div className="progress-bar-fill" style={{ width: `${set.percent}%` }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {topPerformers.length > 0 && (
         <section style={{ marginBottom: '32px' }}>

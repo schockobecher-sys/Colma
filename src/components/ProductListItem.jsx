@@ -1,4 +1,5 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Trash2, ChevronRight } from 'lucide-react';
+import { useCollection } from '../context/CollectionContext';
 
 export default function ProductListItem({
   product,
@@ -8,6 +9,7 @@ export default function ProductListItem({
   onRemove,
   isSearch = false
 }) {
+  const { updateQuantity } = useCollection();
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
   const isCard = product.type === 'Karte';
 
@@ -28,7 +30,29 @@ export default function ProductListItem({
       </div>
       <div className="product-info">
         <div className="product-name">{product.name}</div>
-        <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${quantity} Stück`}</div>
+        <div className="product-meta">
+          {product.set}
+          {!isSearch && (
+            <div className="quantity-controls">
+              <button
+                aria-label="Verringern"
+                onClick={(e) => { e.stopPropagation(); updateQuantity(product.idProduct, -1); }}
+                className="quantity-btn"
+              >
+                <Minus size={14} />
+              </button>
+              <span className="quantity-value">{quantity}</span>
+              <button
+                aria-label="Erhöhen"
+                onClick={(e) => { e.stopPropagation(); updateQuantity(product.idProduct, 1); }}
+                className="quantity-btn"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+          )}
+          {isSearch && ` • Deutsch`}
+        </div>
       </div>
       <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ textAlign: 'right' }}>
@@ -44,6 +68,7 @@ export default function ProductListItem({
 
         {isSearch ? (
           <button
+            aria-label="Hinzufügen"
             className="btn-icon"
             onClick={() => onAdd && onAdd(product)}
           >
