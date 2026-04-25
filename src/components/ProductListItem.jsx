@@ -1,4 +1,6 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Trash2, ChevronRight } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { useCollection } from '../context/CollectionContext';
 
 export default function ProductListItem({
   product,
@@ -8,6 +10,26 @@ export default function ProductListItem({
   onRemove,
   isSearch = false
 }) {
+  const { showToast } = useToast();
+  const { updateQuantity } = useCollection();
+
+  const handleAddClick = (e) => {
+    e.stopPropagation();
+    if (onAdd) {
+      onAdd(product);
+      showToast(`${product.name} zur Sammlung hinzugefügt`, 'success');
+    }
+  };
+
+  const handleQtyChange = (e, delta) => {
+    e.stopPropagation();
+    updateQuantity(product.idProduct, delta);
+    if (delta > 0) {
+      showToast(`Menge von ${product.name} erhöht`, 'success');
+    } else {
+      showToast(`Menge von ${product.name} verringert`, 'info');
+    }
+  };
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
   const isCard = product.type === 'Karte';
 
@@ -45,10 +67,28 @@ export default function ProductListItem({
         {isSearch ? (
           <button
             className="btn-icon"
-            onClick={() => onAdd && onAdd(product)}
+            onClick={handleAddClick}
           >
             <Plus size={20} />
           </button>
+        ) : quantity !== undefined ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <button
+              className="btn-icon"
+              onClick={(e) => handleQtyChange(e, -1)}
+              style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', boxShadow: 'none' }}
+            >
+              <Minus size={14} />
+            </button>
+            <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: '800' }}>{quantity}</span>
+            <button
+              className="btn-icon"
+              onClick={(e) => handleQtyChange(e, 1)}
+              style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: 'white', boxShadow: 'none' }}
+            >
+              <Plus size={14} />
+            </button>
+          </div>
         ) : onRemove ? (
           <button
             className="btn-icon"
