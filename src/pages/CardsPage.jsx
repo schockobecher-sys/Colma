@@ -18,8 +18,14 @@ export default function CardsPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const searchResults = useMemo(() => {
-    return CardmarketService.searchProducts(debouncedSearch);
+  const searchResultsBySet = useMemo(() => {
+    const results = CardmarketService.searchProducts(debouncedSearch);
+    const grouped = {};
+    results.forEach(product => {
+      if (!grouped[product.set]) grouped[product.set] = [];
+      grouped[product.set].push(product);
+    });
+    return grouped;
   }, [debouncedSearch]);
 
   const handleAdd = (product) => {
@@ -51,24 +57,31 @@ export default function CardsPage() {
       </div>
 
       <div className="results-list" style={{ padding: '0 16px' }}>
-        <div className="section-title">Ergebnisse</div>
-        <div className="product-list">
-          {searchResults.length > 0 ? (
-            searchResults.map(result => (
-              <ProductListItem
-                key={result.idProduct}
-                product={result}
-                price={prices[result.idProduct]?.trend || 0}
-                onAdd={handleAdd}
-                isSearch={true}
-              />
-            ))
-          ) : (
-            <div className="text-center text-secondary" style={{ marginTop: '40px' }}>
-              {searchTerm.length > 2 ? 'Keine Ergebnisse gefunden' : 'Gib mindestens 3 Zeichen ein (z.B. Glurak, 151)'}
+        {Object.keys(searchResultsBySet).length > 0 ? (
+          Object.entries(searchResultsBySet).map(([set, products]) => (
+            <div key={set} style={{ marginBottom: '24px' }}>
+              <div className="section-title" style={{ fontSize: '14px', opacity: 0.8 }}>{set}</div>
+              <div className="product-list">
+                {products.map(product => (
+                  <ProductListItem
+                    key={product.idProduct}
+                    product={product}
+                    price={prices[product.idProduct]?.trend || 0}
+                    onAdd={handleAdd}
+                    isSearch={true}
+                  />
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+          ))
+        ) : (
+          <div className="text-center text-secondary" style={{ marginTop: '40px' }}>
+            <div className="glass-panel" style={{ padding: '40px 20px', borderRadius: '24px' }}>
+              <Search size={48} style={{ marginBottom: '16px', opacity: 0.2 }} />
+              <p>{searchTerm.length > 2 ? 'Keine Ergebnisse gefunden' : 'Gib mindestens 3 Zeichen ein (z.B. Glurak, 151)'}</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

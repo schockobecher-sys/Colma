@@ -81,6 +81,16 @@ export function CollectionProvider({ children }) {
     });
   };
 
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev => prev.map(item => {
+      if (item.idProduct === idProduct) {
+        const newQuantity = Math.max(0, item.quantity + delta);
+        return { ...item, quantity: newQuantity };
+      }
+      return item;
+    }).filter(item => item.quantity > 0));
+  };
+
   const removeItem = (idProduct) => {
     setItems(prev => prev.filter(item => item.idProduct !== idProduct));
   };
@@ -133,6 +143,7 @@ export function CollectionProvider({ children }) {
         addItem,
         removeItem,
         updateItem,
+        updateQuantity,
         getStats,
         getTotalValue
       }}

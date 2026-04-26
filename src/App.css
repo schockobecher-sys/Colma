@@ -137,7 +137,12 @@
   backdrop-filter: blur(10px);
   border-radius: 18px;
   border: 1px solid var(--glass-border);
-  transition: transform 0.2s ease;
+  transition: all 0.2s ease;
+}
+
+.product-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .product-item:active {
@@ -157,7 +162,7 @@
   position: relative;
 }
 
-/* Holographic Effect Placeholder */
+/* Holographic Effect */
 .holo-effect {
   position: absolute;
   top: 0;
@@ -166,18 +171,34 @@
   height: 100%;
   background: linear-gradient(135deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.1) 45%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(255, 255, 255, 0.1) 55%,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 255, 255, 0.2) 45%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0.2) 55%,
+    rgba(255, 255, 255, 0) 70%,
     rgba(255, 255, 255, 0) 100%);
   background-size: 200% 200%;
-  animation: holo 3s infinite linear;
+  animation: holo 4s infinite linear;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 2;
+}
+
+.product-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg,
+    rgba(255,0,0,0.1),
+    rgba(0,255,0,0.1),
+    rgba(0,0,255,0.1));
+  opacity: 0.3;
   pointer-events: none;
 }
 
 @keyframes holo {
-  0% { background-position: -200% -200%; }
-  100% { background-position: 200% 200%; }
+  0% { background-position: -100% -100%; }
+  100% { background-position: 100% 100%; }
 }
 
 .product-image img {
