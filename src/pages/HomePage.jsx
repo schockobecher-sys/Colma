@@ -1,7 +1,8 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState, useMemo } from 'react';
+import germanProducts from '../data/germanProducts.json';
 
 export default function HomePage() {
   const { items, metadata, prices, getStats, lastUpdate } = useCollection();
@@ -48,6 +49,23 @@ export default function HomePage() {
   }, [items]);
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
+
+  const setProgress = useMemo(() => {
+    const sets = [...new Set(germanProducts.map(p => p.set))];
+    return sets.map(setName => {
+      const totalInSet = germanProducts.filter(p => p.set === setName).length;
+      const ownedInSet = items.filter(item => {
+        const product = germanProducts.find(p => p.idProduct === item.idProduct);
+        return product && product.set === setName;
+      }).length;
+      return {
+        name: setName,
+        owned: ownedInSet,
+        total: totalInSet,
+        percent: (ownedInSet / totalInSet) * 100
+      };
+    }).sort((a, b) => b.percent - a.percent).slice(0, 3);
+  }, [items]);
 
   return (
     <div className="dashboard">
@@ -148,6 +166,27 @@ export default function HomePage() {
               Noch keine Produkte in der Sammlung.
             </div>
           )}
+        </div>
+      </section>
+
+      <section style={{ marginBottom: '32px' }}>
+        <div className="section-title">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BookOpen size={16} className="text-accent" /> Set Fortschritt
+          </div>
+        </div>
+        <div className="grid-1" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {setProgress.map(set => (
+            <div key={set.name} className="glass-panel" style={{ padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', fontWeight: '700' }}>
+                <span>{set.name}</span>
+                <span>{set.owned} / {set.total}</span>
+              </div>
+              <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${set.percent}%`, background: 'var(--accent)', boxShadow: '0 0 10px var(--accent)' }}></div>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

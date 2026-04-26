@@ -1,11 +1,11 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, ChevronRight } from 'lucide-react';
 
 export default function ProductListItem({
   product,
   price,
   quantity,
   onAdd,
-  onRemove,
+  onUpdateQuantity,
   isSearch = false
 }) {
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
@@ -31,6 +31,24 @@ export default function ProductListItem({
         <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${quantity} Stück`}</div>
       </div>
       <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {!isSearch && onUpdateQuantity && (
+          <div className="quantity-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '4px' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onUpdateQuantity(product.idProduct, -1); }}
+              style={{ background: 'transparent', color: 'var(--text-secondary)', padding: '4px' }}
+            >
+              -
+            </button>
+            <span style={{ fontSize: '12px', fontWeight: '700', minWidth: '16px', textAlign: 'center' }}>{quantity}</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onUpdateQuantity(product.idProduct, 1); }}
+              style={{ background: 'transparent', color: 'var(--text-secondary)', padding: '4px' }}
+            >
+              +
+            </button>
+          </div>
+        )}
+
         <div style={{ textAlign: 'right' }}>
           <div className="price-now">
             {(price * (quantity || 1)).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
@@ -48,14 +66,6 @@ export default function ProductListItem({
             onClick={() => onAdd && onAdd(product)}
           >
             <Plus size={20} />
-          </button>
-        ) : onRemove ? (
-          <button
-            className="btn-icon"
-            onClick={() => onRemove(product.idProduct)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto', boxShadow: 'none' }}
-          >
-            <Trash2 size={18} />
           </button>
         ) : (
           <ChevronRight size={16} className="text-secondary" />
