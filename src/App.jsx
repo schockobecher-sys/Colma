@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CollectionProvider } from './context/CollectionContext';
+import { ToastProvider } from './context/ToastContext';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import CardsPage from './pages/CardsPage';
@@ -10,7 +11,8 @@ import './App.css';
 function App() {
   return (
     <CollectionProvider>
-      <Router>
+      <ToastProvider>
+        <Router>
         <div className="app">
           <Navbar />
           <main className="main-content">
@@ -23,6 +25,7 @@ function App() {
           </main>
         </div>
       </Router>
+      </ToastProvider>
     </CollectionProvider>
   );
 }
