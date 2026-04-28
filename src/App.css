@@ -231,3 +231,48 @@
 .btn-icon svg {
   stroke-width: 3px;
 }
+
+/* Skeleton Loading */
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--bg-tertiary) 25%,
+    rgba(255, 255, 255, 0.05) 50%,
+    var(--bg-tertiary) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-loading {
+  pointer-events: none;
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* iOS Safe Area & Layout fixes */
+.app {
+  padding-top: env(safe-area-inset-top);
+}
+
+.app-header {
+  padding-top: 20px;
+}
+
+.bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Glassmorphism improvements */
+.glass-panel {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.9);
+}
