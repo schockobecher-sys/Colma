@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState, useMemo } from 'react';
@@ -49,6 +49,20 @@ export default function HomePage() {
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
+  // Collection Breakdown
+  const breakdown = useMemo(() => {
+    const counts = items.reduce((acc, item) => {
+      const type = metadata[item.idProduct]?.type || 'Unbekannt';
+      acc[type] = (acc[type] || 0) + item.quantity;
+      return acc;
+    }, {});
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    return {
+      karte: ((counts['Karte'] || 0) / total) * 100 || 0,
+      sealed: ((counts['Sealed'] || 0) / total) * 100 || 0
+    };
+  }, [items, metadata]);
+
   return (
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -72,6 +86,19 @@ export default function HomePage() {
         <div className="text-secondary" style={{ fontSize: '10px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Clock size={10} /> Stand: {formattedDate} (Cardmarket)
         </div>
+
+        {items.length > 0 && (
+          <div className="breakdown-container" style={{ marginTop: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: '700', marginBottom: '6px', textTransform: 'uppercase' }}>
+              <span>Karte ({breakdown.karte.toFixed(0)}%)</span>
+              <span>Sealed ({breakdown.sealed.toFixed(0)}%)</span>
+            </div>
+            <div className="breakdown-bar" style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+              <div style={{ width: `${breakdown.karte}%`, background: 'var(--accent)', transition: 'width 1s ease-out' }}></div>
+              <div style={{ width: `${breakdown.sealed}%`, background: 'var(--accent-secondary)', transition: 'width 1s ease-out' }}></div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid-2" style={{ marginBottom: '32px' }}>
@@ -151,7 +178,36 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section>
+      <section style={{ marginBottom: '32px' }}>
+        <div className="section-title">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Layers size={16} className="text-accent" /> Set-Fortschritt
+          </div>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px' }}>
+          {[
+            { name: '151', total: 14 },
+            { name: 'Obsidianflammen', total: 2 },
+            { name: 'Gewalten der Zeit', total: 2 }
+          ].map(set => {
+            const collected = items.filter(i => metadata[i.idProduct]?.set === set.name).length;
+            const percent = (collected / set.total) * 100;
+            return (
+              <div key={set.name} style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                  <span style={{ fontWeight: '700' }}>{set.name}</span>
+                  <span className="text-secondary">{collected}/{set.total}</span>
+                </div>
+                <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ width: `${percent}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-secondary), var(--accent))', borderRadius: '4px' }}></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section style={{ marginBottom: '32px' }}>
         <div className="section-title">Schnellzugriff</div>
         <Link to="/cards" className="product-item" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="btn-icon"><Plus size={24} /></div>

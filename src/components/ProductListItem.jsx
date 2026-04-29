@@ -1,4 +1,4 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Trash2, ChevronRight } from 'lucide-react';
 
 export default function ProductListItem({
   product,
@@ -6,6 +6,7 @@ export default function ProductListItem({
   quantity,
   onAdd,
   onRemove,
+  onUpdateQuantity,
   isSearch = false
 }) {
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
@@ -28,7 +29,7 @@ export default function ProductListItem({
       </div>
       <div className="product-info">
         <div className="product-name">{product.name}</div>
-        <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${quantity} Stück`}</div>
+        <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : 'Sammlung'}</div>
       </div>
       <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ textAlign: 'right' }}>
@@ -42,6 +43,24 @@ export default function ProductListItem({
           )}
         </div>
 
+        {!isSearch && onUpdateQuantity && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', padding: '4px' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onUpdateQuantity(product.idProduct, -1); }}
+              style={{ background: 'transparent', color: 'white', padding: '4px' }}
+            >
+              <Minus size={14} />
+            </button>
+            <span style={{ fontWeight: '800', minWidth: '20px', textAlign: 'center' }}>{quantity}</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onUpdateQuantity(product.idProduct, 1); }}
+              style={{ background: 'transparent', color: 'white', padding: '4px' }}
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+        )}
+
         {isSearch ? (
           <button
             className="btn-icon"
@@ -53,7 +72,7 @@ export default function ProductListItem({
           <button
             className="btn-icon"
             onClick={() => onRemove(product.idProduct)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto', boxShadow: 'none' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, boxShadow: 'none' }}
           >
             <Trash2 size={18} />
           </button>

@@ -93,6 +93,26 @@ export function CollectionProvider({ children }) {
     );
   };
 
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev =>
+      prev.map(item =>
+        item.idProduct === idProduct
+          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          : item
+      )
+    );
+  };
+
+  const updatePurchasePrice = (idProduct, newPrice) => {
+    setItems(prev =>
+      prev.map(item =>
+        item.idProduct === idProduct
+          ? { ...item, purchasePrice: Math.max(0, newPrice) }
+          : item
+      )
+    );
+  };
+
   const getTotalValue = () => {
     return items.reduce((total, item) => {
       const currentPrice = prices[item.idProduct]?.trend || 0;
@@ -133,6 +153,8 @@ export function CollectionProvider({ children }) {
         addItem,
         removeItem,
         updateItem,
+        updateQuantity,
+        updatePurchasePrice,
         getStats,
         getTotalValue
       }}
