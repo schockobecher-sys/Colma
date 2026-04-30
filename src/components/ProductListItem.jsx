@@ -1,4 +1,4 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Trash2, ChevronRight } from 'lucide-react';
 
 export default function ProductListItem({
   product,
@@ -6,6 +6,7 @@ export default function ProductListItem({
   quantity,
   onAdd,
   onRemove,
+  onUpdateQuantity,
   isSearch = false
 }) {
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
@@ -28,7 +29,25 @@ export default function ProductListItem({
       </div>
       <div className="product-info">
         <div className="product-name">{product.name}</div>
-        <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${quantity} Stück`}</div>
+        <div className="product-meta">
+          {product.set} • {isSearch ? 'Deutsch' : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); onUpdateQuantity(product.idProduct, -1); }}
+                style={{ background: 'var(--bg-tertiary)', border: 'none', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}
+              >
+                <Minus size={12} />
+              </button>
+              <span style={{ fontWeight: '700', minWidth: '20px', textAlign: 'center' }}>{quantity}x</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); onUpdateQuantity(product.idProduct, 1); }}
+                style={{ background: 'var(--bg-tertiary)', border: 'none', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ textAlign: 'right' }}>

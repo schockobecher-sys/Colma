@@ -85,6 +85,22 @@ export function CollectionProvider({ children }) {
     setItems(prev => prev.filter(item => item.idProduct !== idProduct));
   };
 
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev => prev.map(item => {
+      if (item.idProduct === idProduct) {
+        const newQuantity = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQuantity };
+      }
+      return item;
+    }));
+  };
+
+  const updatePurchasePrice = (idProduct, newPrice) => {
+    setItems(prev => prev.map(item =>
+      item.idProduct === idProduct ? { ...item, purchasePrice: newPrice } : item
+    ));
+  };
+
   const updateItem = (idProduct, updates) => {
     setItems(prev =>
       prev.map(item =>
@@ -132,6 +148,8 @@ export function CollectionProvider({ children }) {
         setMetadata,
         addItem,
         removeItem,
+        updateQuantity,
+        updatePurchasePrice,
         updateItem,
         getStats,
         getTotalValue
