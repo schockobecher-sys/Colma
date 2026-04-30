@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CollectionProvider } from './context/CollectionContext';
+import { ToastProvider } from './context/ToastContext';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import CardsPage from './pages/CardsPage';
@@ -10,8 +11,9 @@ import './App.css';
 function App() {
   return (
     <CollectionProvider>
-      <Router>
-        <div className="app">
+      <ToastProvider>
+        <Router>
+          <div className="app">
           <Navbar />
           <main className="main-content">
             <Routes>
@@ -21,8 +23,9 @@ function App() {
               <Route path="/favorites" element={<ProfilePage />} />
             </Routes>
           </main>
-        </div>
-      </Router>
+            </div>
+          </Router>
+      </ToastProvider>
     </CollectionProvider>
   );
 }

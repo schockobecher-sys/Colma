@@ -65,10 +65,22 @@ export const CardmarketService = {
   /**
    * Local search against curated products.
    */
-  searchProducts(query) {
-    if (!query || query.length < 3) return [];
+  searchProducts(query, setFilter = '') {
+    let filtered = germanProducts;
+
+    if (setFilter) {
+      filtered = filtered.filter(p => p.set === setFilter);
+    }
+
+    if (!query || query.length < 3) {
+      // If query is too short but we have a set filter, return the set products
+      // If no query and no set filter, return nothing (or everything?)
+      // For now, if no query, return the filtered list if a set is selected
+      return setFilter ? filtered : (query === '' ? filtered : []);
+    }
+
     const q = query.toLowerCase();
-    return germanProducts.filter(p =>
+    return filtered.filter(p =>
       p.name.toLowerCase().includes(q) ||
       p.set.toLowerCase().includes(q)
     );
