@@ -1,7 +1,8 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, PieChart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState, useMemo } from 'react';
+import ProductListItem from '../components/ProductListItem';
 
 export default function HomePage() {
   const { items, metadata, prices, getStats, lastUpdate } = useCollection();
@@ -74,7 +75,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '32px' }}>
+      <div className="grid-2" style={{ marginBottom: '24px' }}>
         <div className="stat-box">
           <div className="stat-label">Produkte</div>
           <div className="stat-value">{items.length}</div>
@@ -82,6 +83,31 @@ export default function HomePage() {
         <div className="stat-box">
           <div className="stat-label">Items Gesamt</div>
           <div className="stat-value">{stats.itemCount}</div>
+        </div>
+      </div>
+
+      <div className="glass-panel" style={{ padding: '20px', marginBottom: '32px' }}>
+        <div className="section-title" style={{ marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <PieChart size={14} /> Sammlung Aufteilung
+          </div>
+        </div>
+        <div style={{ height: '8px', background: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
+          {(() => {
+            const cards = items.filter(i => metadata[i.idProduct]?.type === 'Karte').reduce((sum, i) => sum + i.quantity, 0);
+            const sealed = items.filter(i => metadata[i.idProduct]?.type === 'Sealed').reduce((sum, i) => sum + i.quantity, 0);
+            const total = cards + sealed || 1;
+            return (
+              <>
+                <div style={{ width: `${(cards / total) * 100}%`, background: 'var(--accent)', transition: 'width 1s ease' }}></div>
+                <div style={{ width: `${(sealed / total) * 100}%`, background: 'var(--accent-secondary)', transition: 'width 1s ease' }}></div>
+              </>
+            );
+          })()}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase' }}>
+          <div style={{ color: 'var(--accent)' }}>Karten</div>
+          <div style={{ color: 'var(--accent-secondary)' }}>Sealed</div>
         </div>
       </div>
 
@@ -96,21 +122,14 @@ export default function HomePage() {
             {topPerformers.map(item => {
               const meta = metadata[item.idProduct] || { name: 'Lade...', set: '', idProduct: item.idProduct };
               const currentPrice = prices[item.idProduct]?.trend || 0;
-              const gain = currentPrice - (item.purchasePrice || 0);
               return (
-                <div key={item.idProduct} className="product-item">
-                  <div className="product-image">
-                    <img src={`https://static.cardmarket.com/img/products/1/${item.idProduct}.jpg`} alt="" />
-                    <div className="holo-effect"></div>
-                  </div>
-                  <div className="product-info">
-                    <div className="product-name">{meta.name}</div>
-                    <div className="product-meta">Gain: <span className={gain >= 0 ? 'text-success' : 'text-danger'}>{gain >= 0 ? '+' : ''}{gain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div>
-                  </div>
-                  <div className="product-price">
-                    <div className="price-now">{currentPrice.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
-                  </div>
-                </div>
+                <ProductListItem
+                  key={item.idProduct}
+                  product={meta}
+                  price={currentPrice}
+                  quantity={item.quantity}
+                  isLoading={syncStatus === 'loading'}
+                />
               );
             })}
           </div>

@@ -1,4 +1,4 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Minus, Trash2, ChevronRight } from 'lucide-react';
 
 export default function ProductListItem({
   product,
@@ -6,8 +6,25 @@ export default function ProductListItem({
   quantity,
   onAdd,
   onRemove,
-  isSearch = false
+  onUpdateQuantity,
+  isSearch = false,
+  isLoading = false
 }) {
+  if (isLoading) {
+    return (
+      <div className="product-item loading-skeleton">
+        <div className="product-image skeleton-box" style={{ width: '56px', height: '56px' }}></div>
+        <div className="product-info">
+          <div className="skeleton-box" style={{ width: '60%', height: '16px', marginBottom: '8px' }}></div>
+          <div className="skeleton-box" style={{ width: '40%', height: '12px' }}></div>
+        </div>
+        <div className="product-price">
+          <div className="skeleton-box" style={{ width: '40px', height: '16px' }}></div>
+        </div>
+      </div>
+    );
+  }
+
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
   const isCard = product.type === 'Karte';
 
@@ -45,20 +62,42 @@ export default function ProductListItem({
         {isSearch ? (
           <button
             className="btn-icon"
-            onClick={() => onAdd && onAdd(product)}
+            onClick={(e) => { e.stopPropagation(); onAdd && onAdd(product); }}
           >
             <Plus size={20} />
           </button>
-        ) : onRemove ? (
-          <button
-            className="btn-icon"
-            onClick={() => onRemove(product.idProduct)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto', boxShadow: 'none' }}
-          >
-            <Trash2 size={18} />
-          </button>
         ) : (
-          <ChevronRight size={16} className="text-secondary" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onUpdateQuantity && (
+              <div className="quantity-controls glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px' }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onUpdateQuantity(-1); }}
+                  style={{ background: 'transparent', color: 'white', padding: '2px', opacity: quantity <= 1 ? 0.3 : 1 }}
+                  disabled={quantity <= 1}
+                >
+                  <Minus size={14} />
+                </button>
+                <span style={{ fontSize: '12px', fontWeight: '800', minWidth: '16px', textAlign: 'center' }}>{quantity}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onUpdateQuantity(1); }}
+                  style={{ background: 'transparent', color: 'white', padding: '2px' }}
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+            )}
+            {onRemove ? (
+              <button
+                className="btn-icon"
+                onClick={(e) => { e.stopPropagation(); onRemove(product.idProduct); }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto', boxShadow: 'none', padding: '4px' }}
+              >
+                <Trash2 size={18} />
+              </button>
+            ) : (
+              <ChevronRight size={16} className="text-secondary" />
+            )}
+          </div>
         )}
       </div>
     </div>
