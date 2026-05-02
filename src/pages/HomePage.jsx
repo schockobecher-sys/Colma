@@ -1,32 +1,12 @@
 import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const { items, metadata, prices, getStats, lastUpdate, isSyncing, fetchPrices } = useCollection();
 
   const stats = getStats();
-
-  // Status should be derived or set based on actual data
-  const derivedSyncStatus = useMemo(() => {
-    const lastFetch = localStorage.getItem('colma_last_fetch_time');
-    const now = new Date().getTime();
-
-    if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 5) {
-      return 'success';
-    }
-    if (Object.keys(prices).length > 0) {
-      return 'success';
-    }
-    return 'loading';
-  }, [prices]);
-
-  // If we still want to use state for some reason (e.g. manual refresh)
-  useEffect(() => {
-    setSyncStatus(derivedSyncStatus);
-  }, [derivedSyncStatus]);
 
   // Derive "Top Performers" (highest gain per item)
   const topPerformers = useMemo(() => {
@@ -49,14 +29,34 @@ export default function HomePage() {
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
+  const breakdown = useMemo(() => {
+    const singles = items.filter(i => metadata[i.idProduct]?.type === 'Karte').reduce((sum, i) => sum + (prices[i.idProduct]?.trend || 0) * i.quantity, 0);
+    const sealed = items.filter(i => metadata[i.idProduct]?.type === 'Sealed').reduce((sum, i) => sum + (prices[i.idProduct]?.trend || 0) * i.quantity, 0);
+    const total = singles + sealed;
+    return {
+      singles: total > 0 ? (singles / total) * 100 : 50,
+      sealed: total > 0 ? (sealed / total) * 100 : 50,
+      total
+    };
+  }, [items, metadata, prices]);
+
   return (
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
+        <div className="sync-indicator" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {isSyncing ? (
+            <RefreshCw size={16} className="text-secondary animate-spin" />
+          ) : (
+            <button
+              onClick={() => fetchPrices(true)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', display: 'flex', padding: '4px' }}
+              title="Preise aktualisieren"
+            >
+              <RefreshCw size={16} />
+            </button>
+          )}
+          {lastUpdate ? <CheckCircle2 size={16} className="text-success" /> : <AlertCircle size={16} className="text-danger" />}
         </div>
       </header>
 
@@ -69,6 +69,18 @@ export default function HomePage() {
           {stats.totalProfit >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
           {stats.totalProfit >= 0 ? '+' : ''}{stats.totalProfit.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} ({stats.profitPercent.toFixed(1)}%)
         </div>
+
+        <div className="collection-breakdown" style={{ marginTop: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+            <span>Karten ({breakdown.singles.toFixed(0)}%)</span>
+            <span>Sealed ({breakdown.sealed.toFixed(0)}%)</span>
+          </div>
+          <div className="breakdown-bar" style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+            <div style={{ width: `${breakdown.singles}%`, background: 'var(--accent)', height: '100%' }}></div>
+            <div style={{ width: `${breakdown.sealed}%`, background: 'var(--accent-secondary)', height: '100%' }}></div>
+          </div>
+        </div>
+
         <div className="text-secondary" style={{ fontSize: '10px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Clock size={10} /> Stand: {formattedDate} (Cardmarket)
         </div>
