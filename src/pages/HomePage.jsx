@@ -1,11 +1,16 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, PieChart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
+import { useToast } from '../context/ToastContext';
+import { CardmarketService } from '../services/CardmarketService';
+import { SET_TOTALS } from '../data/constants';
 import { useEffect, useState, useMemo } from 'react';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
+  const { items, metadata, prices, getStats, lastUpdate, setPrices } = useCollection();
+  const { showToast } = useToast();
   const [syncStatus, setSyncStatus] = useState('idle');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const stats = getStats();
 
@@ -49,15 +54,80 @@ export default function HomePage() {
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
+  const handleRefreshPrices = async () => {
+    setIsSyncing(true);
+    setSyncStatus('loading');
+    try {
+      const result = await CardmarketService.fetchPriceGuide();
+      if (result) {
+        setPrices(result.prices);
+        localStorage.setItem('colma_prices', JSON.stringify(result.prices));
+        localStorage.setItem('colma_last_update', result.updatedAt);
+        localStorage.setItem('colma_last_fetch_time', new Date().getTime().toString());
+        showToast('Preise aktualisiert');
+        setSyncStatus('success');
+      }
+    } catch (e) {
+      console.error(e);
+      showToast('Aktualisierung fehlgeschlagen', 'danger');
+      setSyncStatus('error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Derive Collection Breakdown
+  const breakdown = useMemo(() => {
+    const counts = { Karte: 0, Sealed: 0 };
+    items.forEach(item => {
+      const type = metadata[item.idProduct]?.type || 'Unbekannt';
+      if (counts[type] !== undefined) {
+        counts[type] += item.quantity;
+      }
+    });
+    const total = counts.Karte + counts.Sealed || 1;
+    return {
+      karte: (counts.Karte / total) * 100,
+      sealed: (counts.Sealed / total) * 100,
+      counts
+    };
+  }, [items, metadata]);
+
+  // Derive Set Progress
+  const setProgress = useMemo(() => {
+    const trackedSets = ['151', 'Obsidianflammen', 'Gewalten der Zeit'];
+
+    return trackedSets.map(setName => {
+      const uniqueInSet = items.filter(item => metadata[item.idProduct]?.set === setName).length;
+      const total = SET_TOTALS[setName] || 100;
+      return {
+        name: setName,
+        collected: uniqueInSet,
+        total,
+        percent: (uniqueInSet / total) * 100
+      };
+    });
+  }, [items, metadata]);
+
   return (
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
-        </div>
+        <button
+          className="sync-indicator"
+          onClick={handleRefreshPrices}
+          disabled={isSyncing}
+          style={{ background: 'transparent', border: 'none', padding: '8px', cursor: 'pointer' }}
+          title={`Zuletzt aktualisiert: ${formattedDate}`}
+        >
+          {isSyncing ? (
+            <RefreshCw size={18} className="text-secondary animate-spin" />
+          ) : syncStatus === 'error' ? (
+            <AlertCircle size={18} className="text-danger" />
+          ) : (
+            <CheckCircle2 size={18} className="text-success" />
+          )}
+        </button>
       </header>
 
       <div className="portfolio-card">
@@ -74,7 +144,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '32px' }}>
+      <div className="grid-2" style={{ marginBottom: '24px' }}>
         <div className="stat-box">
           <div className="stat-label">Produkte</div>
           <div className="stat-value">{items.length}</div>
@@ -84,6 +154,47 @@ export default function HomePage() {
           <div className="stat-value">{stats.itemCount}</div>
         </div>
       </div>
+
+      <section style={{ marginBottom: '32px' }}>
+        <div className="section-title">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <PieChart size={16} className="text-accent" /> Sammlung Aufteilung
+          </div>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px' }}>
+          <div className="breakdown-bar" style={{ height: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden', display: 'flex', marginBottom: '12px' }}>
+            <div style={{ width: `${breakdown.karte}%`, background: 'var(--accent-secondary)', transition: 'width 0.5s ease' }}></div>
+            <div style={{ width: `${breakdown.sealed}%`, background: 'var(--accent)', transition: 'width 0.5s ease' }}></div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '700' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-secondary)' }}></div>
+              Karten ({breakdown.counts.Karte})
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent)' }}></div>
+              Sealed ({breakdown.counts.Sealed})
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: '32px' }}>
+        <div className="section-title">Set Fortschritt</div>
+        <div className="grid-2" style={{ gap: '12px' }}>
+          {setProgress.map(set => (
+            <div key={set.name} className="glass-panel" style={{ padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '13px', fontWeight: '800' }}>{set.name}</span>
+                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{set.collected}/{set.total}</span>
+              </div>
+              <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: `${set.percent}%`, height: '100%', background: 'var(--success)', transition: 'width 0.8s ease' }}></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {topPerformers.length > 0 && (
         <section style={{ marginBottom: '32px' }}>
