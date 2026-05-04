@@ -23,6 +23,7 @@ export function CollectionProvider({ children }) {
   });
   const [metadata, setMetadata] = useState({});
   const [lastUpdate, setLastUpdate] = useState(localStorage.getItem('colma_last_update') || '');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('colma_collection', JSON.stringify(items));
@@ -35,30 +36,35 @@ export function CollectionProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
-  useEffect(() => {
-    async function fetchPrices() {
-      // Only fetch if data is older than 30 minutes
-      const now = new Date().getTime();
-      const lastFetch = localStorage.getItem('colma_last_fetch_time');
+  const fetchPrices = async (force = false) => {
+    const now = new Date().getTime();
+    const lastFetch = localStorage.getItem('colma_last_fetch_time');
 
-      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
-        console.log('Using cached prices (less than 30 minutes old)');
-        return;
-      }
-
-      try {
-        const result = await CardmarketService.fetchPriceGuide();
-        if (result) {
-          setPrices(result.prices);
-          setLastUpdate(result.updatedAt);
-          localStorage.setItem('colma_prices', JSON.stringify(result.prices));
-          localStorage.setItem('colma_last_update', result.updatedAt);
-          localStorage.setItem('colma_last_fetch_time', now.toString());
-        }
-      } catch (e) {
-        console.error('Failed to update prices:', e);
-      }
+    if (!force && lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
+      console.log('Using cached prices (less than 30 minutes old)');
+      return;
     }
+
+    setIsSyncing(true);
+    try {
+      const result = await CardmarketService.fetchPriceGuide();
+      if (result) {
+        setPrices(result.prices);
+        setLastUpdate(result.updatedAt);
+        localStorage.setItem('colma_prices', JSON.stringify(result.prices));
+        localStorage.setItem('colma_last_update', result.updatedAt);
+        localStorage.setItem('colma_last_fetch_time', now.toString());
+        return true;
+      }
+    } catch (e) {
+      console.error('Failed to update prices:', e);
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchPrices();
   }, []);
 
@@ -83,6 +89,25 @@ export function CollectionProvider({ children }) {
 
   const removeItem = (idProduct) => {
     setItems(prev => prev.filter(item => item.idProduct !== idProduct));
+  };
+
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev => prev.map(item => {
+      if (item.idProduct === idProduct) {
+        const newQty = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }));
+  };
+
+  const updatePurchasePrice = (idProduct, newPrice) => {
+    setItems(prev => prev.map(item => {
+      if (item.idProduct === idProduct) {
+        return { ...item, purchasePrice: parseFloat(newPrice) || 0 };
+      }
+      return item;
+    }));
   };
 
   const updateItem = (idProduct, updates) => {
@@ -128,10 +153,14 @@ export function CollectionProvider({ children }) {
         prices,
         metadata,
         lastUpdate,
+        isSyncing,
+        fetchPrices,
         setPrices,
         setMetadata,
         addItem,
         removeItem,
+        updateQuantity,
+        updatePurchasePrice,
         updateItem,
         getStats,
         getTotalValue
