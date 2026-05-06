@@ -1,32 +1,12 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, Clock, Trophy, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const { items, metadata, prices, getStats, lastUpdate, isSyncing, fetchPrices } = useCollection();
 
   const stats = getStats();
-
-  // Status should be derived or set based on actual data
-  const derivedSyncStatus = useMemo(() => {
-    const lastFetch = localStorage.getItem('colma_last_fetch_time');
-    const now = new Date().getTime();
-
-    if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 5) {
-      return 'success';
-    }
-    if (Object.keys(prices).length > 0) {
-      return 'success';
-    }
-    return 'loading';
-  }, [prices]);
-
-  // If we still want to use state for some reason (e.g. manual refresh)
-  useEffect(() => {
-    setSyncStatus(derivedSyncStatus);
-  }, [derivedSyncStatus]);
 
   // Derive "Top Performers" (highest gain per item)
   const topPerformers = useMemo(() => {
@@ -49,15 +29,58 @@ export default function HomePage() {
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
+  // Set Progress Calculation
+  const setProgress = useMemo(() => {
+    const counts = items.reduce((acc, item) => {
+      const set = metadata[item.idProduct]?.set;
+      if (set) acc[set] = (acc[set] || 0) + 1;
+      return acc;
+    }, {});
+
+    const setTotals = {
+      '151': 10, // Just examples based on germanProducts.json
+      'Obsidianflammen': 2,
+      'Gewalten der Zeit': 2
+    };
+
+    return Object.entries(setTotals).map(([name, total]) => ({
+      name,
+      total,
+      count: Math.min(counts[name] || 0, total),
+      percent: Math.round((Math.min(counts[name] || 0, total) / total) * 100)
+    }));
+  }, [items, metadata]);
+
+  // Breakdown calculation
+  const breakdown = useMemo(() => {
+    const karte = items.filter(i => metadata[i.idProduct]?.type === 'Karte').length;
+    const sealed = items.filter(i => metadata[i.idProduct]?.type === 'Sealed').length;
+    const total = karte + sealed || 1;
+    return {
+      karte: (karte / total) * 100,
+      sealed: (sealed / total) * 100,
+      karteCount: karte,
+      sealedCount: sealed
+    };
+  }, [items, metadata]);
+
   return (
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
-        </div>
+        <button
+          className="sync-indicator"
+          onClick={() => fetchPrices(true)}
+          disabled={isSyncing}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+          title={`Zuletzt aktualisiert: ${formattedDate}`}
+        >
+          {isSyncing ? (
+            <RefreshCw size={16} className="text-secondary animate-spin" />
+          ) : (
+            <CheckCircle2 size={16} className="text-success" />
+          )}
+        </button>
       </header>
 
       <div className="portfolio-card">
@@ -74,7 +97,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '32px' }}>
+      <div className="grid-2" style={{ marginBottom: '16px' }}>
         <div className="stat-box">
           <div className="stat-label">Produkte</div>
           <div className="stat-value">{items.length}</div>
@@ -84,6 +107,46 @@ export default function HomePage() {
           <div className="stat-value">{stats.itemCount}</div>
         </div>
       </div>
+
+      <div className="glass-panel" style={{ padding: '16px', marginBottom: '32px' }}>
+        <div className="stat-label" style={{ marginBottom: '12px' }}>Sammlungs-Aufteilung</div>
+        <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden', display: 'flex', marginBottom: '12px' }}>
+          <div style={{ width: `${breakdown.karte}%`, background: 'var(--accent)', transition: 'width 0.5s ease' }}></div>
+          <div style={{ width: `${breakdown.sealed}%`, background: 'var(--accent-secondary)', transition: 'width 0.5s ease' }}></div>
+        </div>
+        <div style={{ display: 'flex', gap: '16px', fontSize: '11px', fontWeight: '700' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--accent)' }}></div>
+            <span className="text-secondary">Karten ({breakdown.karteCount})</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--accent-secondary)' }}></div>
+            <span className="text-secondary">Sealed ({breakdown.sealedCount})</span>
+          </div>
+        </div>
+      </div>
+
+      {setProgress.length > 0 && items.length > 0 && (
+        <section style={{ marginBottom: '32px' }}>
+          <div className="section-title">Set-Fortschritt</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {setProgress.map(set => (
+              <div key={set.name} className="glass-panel" style={{ padding: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', fontWeight: '700' }}>
+                  <span>{set.name}</span>
+                  <span className="text-accent">{set.percent}%</span>
+                </div>
+                <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{ width: `${set.percent}%`, height: '100%', background: 'var(--accent)', transition: 'width 1s ease' }}></div>
+                </div>
+                <div style={{ marginTop: '6px', fontSize: '10px', color: 'var(--text-secondary)' }}>
+                  {set.count} von {set.total} gesammelt
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {topPerformers.length > 0 && (
         <section style={{ marginBottom: '32px' }}>
