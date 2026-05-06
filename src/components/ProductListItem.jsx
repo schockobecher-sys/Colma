@@ -1,13 +1,18 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, Minus, Edit3 } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 export default function ProductListItem({
   product,
   price,
   quantity,
+  purchasePrice,
   onAdd,
   onRemove,
+  onUpdateQuantity,
+  onUpdatePurchasePrice,
   isSearch = false
 }) {
+  const { showToast } = useToast();
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
   const isCard = product.type === 'Karte';
 
@@ -45,20 +50,67 @@ export default function ProductListItem({
         {isSearch ? (
           <button
             className="btn-icon"
-            onClick={() => onAdd && onAdd(product)}
+            onClick={() => {
+              onAdd && onAdd(product);
+              showToast(`${product.name} hinzugefügt`);
+            }}
           >
             <Plus size={20} />
           </button>
-        ) : onRemove ? (
-          <button
-            className="btn-icon"
-            onClick={() => onRemove(product.idProduct)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto', boxShadow: 'none' }}
-          >
-            <Trash2 size={18} />
-          </button>
         ) : (
-          <ChevronRight size={16} className="text-secondary" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', borderRadius: '10px', padding: '2px' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateQuantity && onUpdateQuantity(product.idProduct, -1);
+                }}
+                style={{ background: 'transparent', color: 'white', padding: '4px' }}
+              >
+                <Minus size={14} />
+              </button>
+              <span style={{ minWidth: '20px', textAlign: 'center', fontSize: '13px', fontWeight: '700' }}>{quantity}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateQuantity && onUpdateQuantity(product.idProduct, 1);
+                }}
+                style={{ background: 'transparent', color: 'white', padding: '4px' }}
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const newPrice = prompt('Einkaufspreis pro Stück (€):', purchasePrice || price);
+                if (newPrice !== null) {
+                  const parsed = parseFloat(newPrice.replace(',', '.'));
+                  if (!isNaN(parsed)) {
+                    onUpdatePurchasePrice && onUpdatePurchasePrice(product.idProduct, parsed);
+                    showToast('Preis aktualisiert');
+                  }
+                }
+              }}
+              style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '8px', padding: '6px', color: 'var(--text-secondary)' }}
+            >
+              <Edit3 size={14} />
+            </button>
+
+            {onRemove && (
+              <button
+                className="btn-icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove(product.idProduct);
+                }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto', boxShadow: 'none', padding: '4px' }}
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

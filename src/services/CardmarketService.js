@@ -74,6 +74,10 @@ export const CardmarketService = {
     );
   },
 
+  searchProductsBySet(setName) {
+    return germanProducts.filter(p => p.set === setName);
+  },
+
   /**
    * Helper to get the Cardmarket image URL
    */
