@@ -6,6 +6,8 @@ export default function ProductListItem({
   quantity,
   onAdd,
   onRemove,
+  onUpdateQuantity,
+  onUpdatePrice,
   isSearch = false
 }) {
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
@@ -36,7 +38,14 @@ export default function ProductListItem({
             {(price * (quantity || 1)).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
           </div>
           {!isSearch && (
-            <div className="text-secondary" style={{ fontSize: '10px' }}>
+            <div
+              className="text-secondary"
+              style={{ fontSize: '10px', cursor: onUpdatePrice ? 'pointer' : 'default', textDecoration: onUpdatePrice ? 'underline' : 'none' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdatePrice && onUpdatePrice();
+              }}
+            >
               {price.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} / Stk
             </div>
           )}
@@ -50,13 +59,33 @@ export default function ProductListItem({
             <Plus size={20} />
           </button>
         ) : onRemove ? (
-          <button
-            className="btn-icon"
-            onClick={() => onRemove(product.idProduct)}
-            style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto', boxShadow: 'none' }}
-          >
-            <Trash2 size={18} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onUpdateQuantity && (
+              <div className="quantity-controls" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <button
+                  className="qty-btn"
+                  onClick={(e) => { e.stopPropagation(); onUpdateQuantity(1); }}
+                  style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '4px', color: 'white', padding: '0 4px', fontSize: '10px' }}
+                >
+                  +
+                </button>
+                <button
+                  className="qty-btn"
+                  onClick={(e) => { e.stopPropagation(); onUpdateQuantity(-1); }}
+                  style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '4px', color: 'white', padding: '0 4px', fontSize: '10px' }}
+                >
+                  -
+                </button>
+              </div>
+            )}
+            <button
+              className="btn-icon"
+              onClick={(e) => { e.stopPropagation(); onRemove(product.idProduct); }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--danger)', width: 'auto', boxShadow: 'none', padding: '4px' }}
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
         ) : (
           <ChevronRight size={16} className="text-secondary" />
         )}
