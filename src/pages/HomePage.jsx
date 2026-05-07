@@ -4,8 +4,9 @@ import { useCollection } from '../context/CollectionContext';
 import { useEffect, useState, useMemo } from 'react';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
+  const { items, metadata, prices, getStats, lastUpdate, setPrices } = useCollection();
   const [syncStatus, setSyncStatus] = useState('idle');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const stats = getStats();
 
@@ -49,6 +50,40 @@ export default function HomePage() {
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
+  const setProgress = useMemo(() => {
+    const set151Total = 210; // Approx total for 151
+    const set151Owned = items.filter(item => metadata[item.idProduct]?.set === '151').length;
+    return Math.min(100, (set151Owned / set151Total) * 100);
+  }, [items, metadata]);
+
+  const collectionBreakdown = useMemo(() => {
+    const total = items.length || 1;
+    const cards = items.filter(item => metadata[item.idProduct]?.type === 'Karte').length;
+    const sealed = items.filter(item => metadata[item.idProduct]?.type === 'Sealed').length;
+    return {
+      cards: (cards / total) * 100,
+      sealed: (sealed / total) * 100
+    };
+  }, [items, metadata]);
+
+  const handleRefresh = async () => {
+    setIsSyncing(true);
+    try {
+      const { CardmarketService } = await import('../services/CardmarketService');
+      const result = await CardmarketService.fetchPriceGuide();
+      if (result) {
+        setPrices(result.prices);
+        localStorage.setItem('colma_prices', JSON.stringify(result.prices));
+        localStorage.setItem('colma_last_update', result.updatedAt);
+        localStorage.setItem('colma_last_fetch_time', new Date().getTime().toString());
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   return (
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -74,16 +109,54 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '32px' }}>
-        <div className="stat-box">
+      <div className="dashboard-bento" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+        <div className="stat-box glass-panel">
           <div className="stat-label">Produkte</div>
           <div className="stat-value">{items.length}</div>
         </div>
-        <div className="stat-box">
+        <div className="stat-box glass-panel">
           <div className="stat-label">Items Gesamt</div>
           <div className="stat-value">{stats.itemCount}</div>
         </div>
+        <div className="stat-box glass-panel" style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div className="stat-label">Preis-Sync</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{formattedDate}</div>
+          </div>
+          <button
+            className={`btn-icon ${isSyncing ? 'animate-spin' : ''}`}
+            onClick={handleRefresh}
+            disabled={isSyncing}
+          >
+            <RefreshCw size={20} />
+          </button>
+        </div>
       </div>
+
+      <section style={{ marginBottom: '32px' }}>
+        <div className="section-title">Sammlungs-Status</div>
+        <div className="glass-panel" style={{ padding: '16px' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+              <span>Set Fortschritt (151)</span>
+              <span className="text-accent">{setProgress.toFixed(1)}%</span>
+            </div>
+            <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ width: `${setProgress}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.5s ease' }}></div>
+            </div>
+          </div>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+              <span>Verteilung</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{Math.round(collectionBreakdown.cards)}% Karte / {Math.round(collectionBreakdown.sealed)}% Sealed</span>
+            </div>
+            <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
+              <div style={{ width: `${collectionBreakdown.cards}%`, height: '100%', background: '#ff4b4b' }}></div>
+              <div style={{ width: `${collectionBreakdown.sealed}%`, height: '100%', background: '#2a75bb' }}></div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {topPerformers.length > 0 && (
         <section style={{ marginBottom: '32px' }}>

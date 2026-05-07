@@ -93,6 +93,22 @@ export function CollectionProvider({ children }) {
     );
   };
 
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev =>
+      prev.map(item => {
+        if (item.idProduct === idProduct) {
+          const newQuantity = Math.max(1, item.quantity + delta);
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      })
+    );
+  };
+
+  const updatePurchasePrice = (idProduct, newPrice) => {
+    updateItem(idProduct, { purchasePrice: parseFloat(newPrice) || 0 });
+  };
+
   const getTotalValue = () => {
     return items.reduce((total, item) => {
       const currentPrice = prices[item.idProduct]?.trend || 0;
@@ -133,6 +149,8 @@ export function CollectionProvider({ children }) {
         addItem,
         removeItem,
         updateItem,
+        updateQuantity,
+        updatePurchasePrice,
         getStats,
         getTotalValue
       }}
