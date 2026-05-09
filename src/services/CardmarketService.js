@@ -1,23 +1,16 @@
 import germanProducts from '../data/germanProducts.json';
 
 const PRICE_GUIDE_URL = 'https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json';
-// Primary and secondary CORS proxies for reliability
 const PROXIES = [
   'https://api.codetabs.com/v1/proxy?quest=',
   'https://api.allorigins.win/raw?url='
 ];
 
 export const CardmarketService = {
-  /**
-   * Fetches real prices from Cardmarket S3 via a CORS proxy.
-   * No simulation/fallback data used.
-   */
   async fetchPriceGuide() {
     for (const proxy of PROXIES) {
       try {
         const targetUrl = proxy + (proxy.includes('allorigins') ? encodeURIComponent(PRICE_GUIDE_URL) : PRICE_GUIDE_URL);
-        console.log(`Fetching prices via ${proxy}...`);
-
         const response = await fetch(targetUrl);
         if (!response.ok) throw new Error(`Proxy ${proxy} failed`);
 
@@ -30,7 +23,7 @@ export const CardmarketService = {
         };
       } catch (error) {
         console.warn(`Attempt with ${proxy} failed:`, error.message);
-        continue; // Try next proxy
+        continue;
       }
     }
     throw new Error('All CORS proxies failed to fetch Cardmarket data.');
@@ -48,9 +41,6 @@ export const CardmarketService = {
     return priceMap;
   },
 
-  /**
-   * Uses the local curated German database for metadata.
-   */
   async getProductMetadata(idProduct) {
     const product = germanProducts.find(p => p.idProduct === Number(idProduct));
     return product || {
@@ -62,21 +52,32 @@ export const CardmarketService = {
     };
   },
 
-  /**
-   * Local search against curated products.
-   */
-  searchProducts(query) {
-    if (!query || query.length < 3) return [];
-    const q = query.toLowerCase();
-    return germanProducts.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.set.toLowerCase().includes(q)
-    );
+  searchProducts(query, setFilter = '') {
+    if (!query && !setFilter) return [];
+
+    let results = germanProducts;
+
+    if (setFilter) {
+      results = results.filter(p => p.set === setFilter);
+    }
+
+    if (query && query.length >= 3) {
+      const q = query.toLowerCase();
+      results = results.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.set.toLowerCase().includes(q)
+      );
+    } else if (query && query.length > 0 && !setFilter) {
+      return []; // Wait for 3 chars if no set filter
+    }
+
+    return results;
   },
 
-  /**
-   * Helper to get the Cardmarket image URL
-   */
+  searchProductsBySet(setName) {
+    return germanProducts.filter(p => p.set === setName);
+  },
+
   getProductImageUrl(idProduct) {
     return `https://static.cardmarket.com/img/products/1/${idProduct}.jpg`;
   }
