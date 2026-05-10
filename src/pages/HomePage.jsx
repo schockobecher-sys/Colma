@@ -1,11 +1,15 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
+import { useToast } from '../context/ToastContext';
+import { CardmarketService } from '../services/CardmarketService';
 import { useEffect, useState, useMemo } from 'react';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
+  const { items, metadata, prices, setPrices, setLastUpdate, getStats, lastUpdate } = useCollection();
+  const { showToast } = useToast();
   const [syncStatus, setSyncStatus] = useState('idle');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const stats = getStats();
 
@@ -49,15 +53,62 @@ export default function HomePage() {
 
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    setSyncStatus('loading');
+    try {
+      const result = await CardmarketService.fetchPriceGuide();
+      if (result) {
+        setPrices(result.prices);
+        setLastUpdate(result.updatedAt);
+        localStorage.setItem('colma_prices', JSON.stringify(result.prices));
+        localStorage.setItem('colma_last_update', result.updatedAt);
+        localStorage.setItem('colma_last_fetch_time', new Date().getTime().toString());
+        setSyncStatus('success');
+        showToast('Preise aktualisiert');
+      }
+    } catch (e) {
+      console.error(e);
+      setSyncStatus('error');
+      showToast('Aktualisierung fehlgeschlagen', 'error');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const setProgress = useMemo(() => {
+    const sets = ['151', 'Obsidianflammen', 'Gewalten der Zeit'];
+    return sets.map(setName => {
+      const setTotal = 20; // Simplified total for demo
+      const owned = items.filter(item => {
+        const meta = metadata[item.idProduct];
+        return meta?.set === setName;
+      }).length;
+      return {
+        name: setName,
+        count: owned,
+        total: setTotal,
+        percent: (owned / setTotal) * 100
+      };
+    });
+  }, [items, metadata]);
+
   return (
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
-        </div>
+        <button
+          className="sync-indicator"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px' }}
+        >
+          {syncStatus === 'loading' || isRefreshing ?
+            <RefreshCw size={18} className="text-secondary animate-spin" /> :
+            <RefreshCw size={18} className="text-secondary" />
+          }
+        </button>
       </header>
 
       <div className="portfolio-card">
@@ -74,7 +125,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '32px' }}>
+      <div className="grid-2" style={{ marginBottom: '24px' }}>
         <div className="stat-box">
           <div className="stat-label">Produkte</div>
           <div className="stat-value">{items.length}</div>
@@ -84,6 +135,27 @@ export default function HomePage() {
           <div className="stat-value">{stats.itemCount}</div>
         </div>
       </div>
+
+      <section style={{ marginBottom: '32px' }}>
+        <div className="section-title">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BookOpen size={16} className="text-accent" /> Set Fortschritt
+          </div>
+        </div>
+        <div className="grid-2" style={{ gap: '12px' }}>
+          {setProgress.map(set => (
+            <div key={set.name} className="stat-box" style={{ padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div className="stat-label" style={{ marginBottom: 0 }}>{set.name}</div>
+                <div style={{ fontSize: '12px', fontWeight: '800' }}>{set.count}/{set.total}</div>
+              </div>
+              <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.min(100, set.percent)}%`, background: 'var(--accent)', transition: 'width 1s ease-out' }}></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {topPerformers.length > 0 && (
         <section style={{ marginBottom: '32px' }}>
