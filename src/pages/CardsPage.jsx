@@ -1,14 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { useCollection } from '../context/CollectionContext';
+import { useToast } from '../context/ToastContext';
 import { CardmarketService } from '../services/CardmarketService';
 import ProductListItem from '../components/ProductListItem';
 import FeedbackService from '../services/FeedbackService';
 
 export default function CardsPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [setFilter, setSetFilter] = useState('Alle');
   const { addItem, prices } = useCollection();
+  const { showToast } = useToast();
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  const sets = ['Alle', '151', 'Obsidianflammen', 'Gewalten der Zeit', 'Karmesin & Purpur'];
 
   // Debouncing logic
   useEffect(() => {
@@ -19,15 +24,18 @@ export default function CardsPage() {
   }, [searchTerm]);
 
   const searchResults = useMemo(() => {
-    return CardmarketService.searchProducts(debouncedSearch);
-  }, [debouncedSearch]);
+    let results = CardmarketService.searchProducts(debouncedSearch);
+    if (setFilter !== 'Alle') {
+      results = results.filter(p => p.set === setFilter);
+    }
+    return results;
+  }, [debouncedSearch, setFilter]);
 
   const handleAdd = (product) => {
     const price = prices[product.idProduct]?.trend || 0;
     addItem(product.idProduct, 1, price);
     FeedbackService.triggerAdd();
-    // Use a non-blocking notification instead of alert for better UX
-    console.log(`${product.name} hinzugefügt`);
+    showToast(`${product.name} zur Sammlung hinzugefügt`);
   };
 
   return (
@@ -36,7 +44,7 @@ export default function CardsPage() {
         <h1 className="app-title">Suche</h1>
       </header>
 
-      <div className="search-container" style={{ padding: '0 16px', marginBottom: '20px' }}>
+      <div className="search-container" style={{ padding: '0 16px', marginBottom: '10px' }}>
         <div className="search-input-wrapper" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Search size={20} className="text-secondary" />
           <input
@@ -50,8 +58,29 @@ export default function CardsPage() {
         </div>
       </div>
 
+      <div className="set-filters" style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '0 16px 20px', scrollbarWidth: 'none' }}>
+        {sets.map(s => (
+          <button
+            key={s}
+            onClick={() => setSetFilter(s)}
+            style={{
+              padding: '6px 16px',
+              borderRadius: '20px',
+              whiteSpace: 'nowrap',
+              fontSize: '12px',
+              fontWeight: '700',
+              background: setFilter === s ? 'var(--accent)' : 'var(--bg-secondary)',
+              color: setFilter === s ? '#000' : 'var(--text-secondary)',
+              border: '1px solid var(--border)'
+            }}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
       <div className="results-list" style={{ padding: '0 16px' }}>
-        <div className="section-title">Ergebnisse</div>
+        <div className="section-title">Ergebnisse ({searchResults.length})</div>
         <div className="product-list">
           {searchResults.length > 0 ? (
             searchResults.map(result => (
