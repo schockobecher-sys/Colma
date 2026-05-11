@@ -9,6 +9,43 @@ export default function HomePage() {
 
   const stats = getStats();
 
+  const collectionBreakdown = useMemo(() => {
+    let cardValue = 0;
+    let sealedValue = 0;
+    items.forEach(item => {
+      const meta = metadata[item.idProduct];
+      const price = (prices[item.idProduct]?.trend || 0) * item.quantity;
+      if (meta?.type === 'Sealed') {
+        sealedValue += price;
+      } else {
+        cardValue += price;
+      }
+    });
+    const total = cardValue + sealedValue;
+    return {
+      cardPercent: total > 0 ? (cardValue / total) * 100 : 0,
+      sealedPercent: total > 0 ? (sealedValue / total) * 100 : 0,
+      cardValue,
+      sealedValue
+    };
+  }, [items, metadata, prices]);
+
+  const setProgress = useMemo(() => {
+    const trackedSets = [
+      { name: '151', total: 165 },
+      { name: 'Obsidianflammen', total: 197 },
+      { name: 'Gewalten der Zeit', total: 162 }
+    ];
+
+    return trackedSets.map(set => {
+      const owned = items.filter(item => {
+        const meta = metadata[item.idProduct];
+        return meta?.set === set.name && meta?.type === 'Karte';
+      }).length;
+      return { ...set, owned, percent: (owned / set.total) * 100 };
+    });
+  }, [items, metadata]);
+
   // Status should be derived or set based on actual data
   const derivedSyncStatus = useMemo(() => {
     const lastFetch = localStorage.getItem('colma_last_fetch_time');
@@ -74,7 +111,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '32px' }}>
+      <div className="grid-2" style={{ marginBottom: '24px' }}>
         <div className="stat-box">
           <div className="stat-label">Produkte</div>
           <div className="stat-value">{items.length}</div>
@@ -84,6 +121,41 @@ export default function HomePage() {
           <div className="stat-value">{stats.itemCount}</div>
         </div>
       </div>
+
+      <div className="glass-panel" style={{ padding: '20px', marginBottom: '32px' }}>
+        <div className="stat-label" style={{ marginBottom: '12px' }}>Sammlung Aufteilung</div>
+        <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', display: 'flex', overflow: 'hidden', marginBottom: '12px' }}>
+          <div style={{ width: `${collectionBreakdown.cardPercent}%`, background: 'var(--poke-red)', height: '100%' }}></div>
+          <div style={{ width: `${collectionBreakdown.sealedPercent}%`, background: 'var(--accent-secondary)', height: '100%' }}></div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: '700' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', background: 'var(--poke-red)', borderRadius: '2px' }}></div>
+            Karten ({collectionBreakdown.cardPercent.toFixed(0)}%)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', background: 'var(--accent-secondary)', borderRadius: '2px' }}></div>
+            Sealed ({collectionBreakdown.sealedPercent.toFixed(0)}%)
+          </div>
+        </div>
+      </div>
+
+      <section style={{ marginBottom: '32px' }}>
+        <div className="section-title">Set-Fortschritt</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {setProgress.map(set => (
+            <div key={set.name} className="glass-panel" style={{ padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ fontWeight: '700' }}>{set.name}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{set.owned} / {set.total}</div>
+              </div>
+              <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: `${set.percent}%`, background: 'var(--accent)', height: '100%', transition: 'width 1s ease-out' }}></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {topPerformers.length > 0 && (
         <section style={{ marginBottom: '32px' }}>

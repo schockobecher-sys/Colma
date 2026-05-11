@@ -1,13 +1,17 @@
 import { useCollection } from '../context/CollectionContext';
+import { useToast } from '../context/ToastContext';
 import ProductListItem from '../components/ProductListItem';
 import FeedbackService from '../services/FeedbackService';
 
 export default function CollectionPage() {
   const { items, metadata, prices, removeItem } = useCollection();
+  const { showToast } = useToast();
 
   const handleRemove = (idProduct) => {
+    const meta = metadata[idProduct];
     removeItem(idProduct);
     FeedbackService.triggerRemove();
+    showToast(`${meta?.name || 'Produkt'} entfernt`, 'info');
   };
 
   return (
