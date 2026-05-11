@@ -103,7 +103,7 @@
 
 .stat-box {
   background: var(--glass-bg);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
   padding: 20px;
   border-radius: 20px;
   border: 1px solid var(--glass-border);
@@ -134,10 +134,15 @@
   gap: 16px;
   padding: 14px;
   background: var(--glass-bg);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
   border-radius: 18px;
   border: 1px solid var(--glass-border);
-  transition: transform 0.2s ease;
+  transition: all 0.2s ease;
+}
+
+.product-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .product-item:active {

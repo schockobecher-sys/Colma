@@ -21,19 +21,27 @@ export function CollectionProvider({ children }) {
     const savedPrices = localStorage.getItem('colma_prices');
     return savedPrices ? JSON.parse(savedPrices) : {};
   });
+  const [wishlist, setWishlist] = useState(() => {
+    const saved = localStorage.getItem('colma_wishlist');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [metadata, setMetadata] = useState({});
   const [lastUpdate, setLastUpdate] = useState(localStorage.getItem('colma_last_update') || '');
 
   useEffect(() => {
     localStorage.setItem('colma_collection', JSON.stringify(items));
-    items.forEach(async (item) => {
-      if (!metadata[item.idProduct]) {
-        const meta = await CardmarketService.getProductMetadata(item.idProduct);
-        setMetadata(prev => ({ ...prev, [item.idProduct]: meta }));
+    localStorage.setItem('colma_wishlist', JSON.stringify(wishlist));
+
+    const allProductIds = [...new Set([...items.map(i => i.idProduct), ...wishlist])];
+
+    allProductIds.forEach(async (idProduct) => {
+      if (!metadata[idProduct]) {
+        const meta = await CardmarketService.getProductMetadata(idProduct);
+        setMetadata(prev => ({ ...prev, [idProduct]: meta }));
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  }, [items, wishlist]);
 
   useEffect(() => {
     async function fetchPrices() {
@@ -93,6 +101,15 @@ export function CollectionProvider({ children }) {
     );
   };
 
+  const toggleWishlist = (idProduct) => {
+    setWishlist(prev => {
+      if (prev.includes(idProduct)) {
+        return prev.filter(id => id !== idProduct);
+      }
+      return [...prev, idProduct];
+    });
+  };
+
   const getTotalValue = () => {
     return items.reduce((total, item) => {
       const currentPrice = prices[item.idProduct]?.trend || 0;
@@ -125,6 +142,7 @@ export function CollectionProvider({ children }) {
     <CollectionContext.Provider
       value={{
         items,
+        wishlist,
         prices,
         metadata,
         lastUpdate,
@@ -133,6 +151,7 @@ export function CollectionProvider({ children }) {
         addItem,
         removeItem,
         updateItem,
+        toggleWishlist,
         getStats,
         getTotalValue
       }}

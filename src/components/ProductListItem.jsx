@@ -1,4 +1,5 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, Heart } from 'lucide-react';
+import { useCollection } from '../context/CollectionContext';
 
 export default function ProductListItem({
   product,
@@ -6,8 +7,11 @@ export default function ProductListItem({
   quantity,
   onAdd,
   onRemove,
+  onToggleWishlist,
   isSearch = false
 }) {
+  const { wishlist } = useCollection();
+  const isInWishlist = wishlist.includes(product.idProduct);
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
   const isCard = product.type === 'Karte';
 
@@ -30,8 +34,29 @@ export default function ProductListItem({
         <div className="product-name">{product.name}</div>
         <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${quantity} Stück`}</div>
       </div>
-      <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{ textAlign: 'right' }}>
+      <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {onToggleWishlist && (
+          <button
+            className={`btn-wishlist ${isInWishlist ? 'active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleWishlist(product.idProduct);
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: isInWishlist ? 'var(--danger)' : 'var(--text-secondary)',
+              padding: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <Heart size={20} fill={isInWishlist ? 'var(--danger)' : 'transparent'} />
+          </button>
+        )}
+
+        <div style={{ textAlign: 'right', minWidth: '70px' }}>
           <div className="price-now">
             {(price * (quantity || 1)).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
           </div>

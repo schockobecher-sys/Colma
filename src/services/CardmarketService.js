@@ -65,13 +65,15 @@ export const CardmarketService = {
   /**
    * Local search against curated products.
    */
-  searchProducts(query) {
-    if (!query || query.length < 3) return [];
-    const q = query.toLowerCase();
-    return germanProducts.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.set.toLowerCase().includes(q)
-    );
+  searchProducts(query, setFilter = null) {
+    if ((!query || query.length < 3) && !setFilter) return [];
+
+    const q = query ? query.toLowerCase() : '';
+    return germanProducts.filter(p => {
+      const matchesQuery = !q || p.name.toLowerCase().includes(q) || p.set.toLowerCase().includes(q);
+      const matchesSet = !setFilter || p.set === setFilter;
+      return matchesQuery && matchesSet;
+    });
   },
 
   /**
