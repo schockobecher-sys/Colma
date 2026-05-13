@@ -134,10 +134,16 @@
   gap: 16px;
   padding: 14px;
   background: var(--glass-bg);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 18px;
   border: 1px solid var(--glass-border);
-  transition: transform 0.2s ease;
+  transition: all 0.2s ease;
+}
+
+.product-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .product-item:active {
@@ -157,27 +163,44 @@
   position: relative;
 }
 
-/* Holographic Effect Placeholder */
+/* Holographic Effect */
 .holo-effect {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.1) 45%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(255, 255, 255, 0.1) 55%,
-    rgba(255, 255, 255, 0) 100%);
+  inset: 0;
+  z-index: 2;
+  opacity: 0.5;
+  mix-blend-mode: color-dodge;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 30%,
+    rgba(255, 0, 0, 0.1) 45%,
+    rgba(0, 255, 0, 0.1) 50%,
+    rgba(0, 0, 255, 0.1) 55%,
+    rgba(255, 255, 255, 0.1) 70%,
+    transparent 100%
+  );
   background-size: 200% 200%;
-  animation: holo 3s infinite linear;
+  animation: holo-move 4s ease infinite;
   pointer-events: none;
 }
 
-@keyframes holo {
-  0% { background-position: -200% -200%; }
-  100% { background-position: 200% 200%; }
+.holo-effect::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 70%
+  );
+  opacity: 0.3;
+}
+
+@keyframes holo-move {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
 }
 
 .product-image img {
@@ -230,4 +253,58 @@
 
 .btn-icon svg {
   stroke-width: 3px;
+}
+
+.btn-icon-small {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qty-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Skeleton */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
