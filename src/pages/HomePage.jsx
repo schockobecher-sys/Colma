@@ -1,34 +1,25 @@
 import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
-import { useEffect, useState, useMemo } from 'react';
+import { useToast } from '../context/ToastContext';
+import { useMemo } from 'react';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const { items, metadata, prices, getStats, lastUpdate, isSyncing, fetchPrices } = useCollection();
+  const { addToast } = useToast();
 
   const stats = getStats();
 
-  // Status should be derived or set based on actual data
-  const derivedSyncStatus = useMemo(() => {
-    const lastFetch = localStorage.getItem('colma_last_fetch_time');
-    const now = new Date().getTime();
-
-    if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 5) {
-      return 'success';
+  const handleRefresh = async () => {
+    try {
+      await fetchPrices(true);
+      addToast('Preise erfolgreich aktualisiert');
+    } catch {
+      addToast('Fehler beim Aktualisieren der Preise', 'error');
     }
-    if (Object.keys(prices).length > 0) {
-      return 'success';
-    }
-    return 'loading';
-  }, [prices]);
+  };
 
-  // If we still want to use state for some reason (e.g. manual refresh)
-  useEffect(() => {
-    setSyncStatus(derivedSyncStatus);
-  }, [derivedSyncStatus]);
-
-  // Derive "Top Performers" (highest gain per item)
+  // Derive "Top Performers"
   const topPerformers = useMemo(() => {
     return [...items]
       .map(item => {
@@ -47,17 +38,40 @@ export default function HomePage() {
       .slice(0, 3);
   }, [items]);
 
+  // Collection breakdown
+  const breakdown = useMemo(() => {
+    const total = items.length || 1;
+    const cards = items.filter(item => (metadata[item.idProduct]?.type || 'Karte') === 'Karte').length;
+    const sealed = items.length - cards;
+    return {
+      cardsPercent: (cards / total) * 100,
+      sealedPercent: (sealed / total) * 100,
+      cardsCount: cards,
+      sealedCount: sealed
+    };
+  }, [items, metadata]);
+
   const formattedDate = lastUpdate ? new Date(lastUpdate).toLocaleString('de-DE') : 'Unbekannt';
 
   return (
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
-        </div>
+        <button
+          className="sync-indicator"
+          onClick={handleRefresh}
+          disabled={isSyncing}
+          style={{ background: 'transparent', border: 'none', color: 'inherit' }}
+        >
+          {isSyncing ? (
+            <RefreshCw size={20} className="text-secondary animate-spin" />
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+               <CheckCircle2 size={16} className="text-success" />
+               <span style={{ fontSize: '10px' }}>Sync</span>
+            </div>
+          )}
+        </button>
       </header>
 
       <div className="portfolio-card">
@@ -69,8 +83,20 @@ export default function HomePage() {
           {stats.totalProfit >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
           {stats.totalProfit >= 0 ? '+' : ''}{stats.totalProfit.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} ({stats.profitPercent.toFixed(1)}%)
         </div>
+
+        <div className="collection-breakdown" style={{ marginTop: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginBottom: '6px', fontWeight: '700' }}>
+            <span>KARTEN ({breakdown.cardsCount})</span>
+            <span>SEALED ({breakdown.sealedCount})</span>
+          </div>
+          <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', display: 'flex' }}>
+            <div style={{ width: `${breakdown.cardsPercent}%`, background: 'var(--accent)', transition: 'width 0.5s ease' }}></div>
+            <div style={{ width: `${breakdown.sealedPercent}%`, background: 'var(--accent-secondary)', transition: 'width 0.5s ease' }}></div>
+          </div>
+        </div>
+
         <div className="text-secondary" style={{ fontSize: '10px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Clock size={10} /> Stand: {formattedDate} (Cardmarket)
+          <Clock size={10} /> Stand: {formattedDate}
         </div>
       </div>
 
@@ -105,7 +131,7 @@ export default function HomePage() {
                   </div>
                   <div className="product-info">
                     <div className="product-name">{meta.name}</div>
-                    <div className="product-meta">Gain: <span className={gain >= 0 ? 'text-success' : 'text-danger'}>{gain >= 0 ? '+' : ''}{gain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div>
+                    <div className="product-meta">Gain: <span className={gain >= 0 ? 'text-success' : 'text-danger'} style={{ fontWeight: '700' }}>{gain >= 0 ? '+' : ''}{gain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div>
                   </div>
                   <div className="product-price">
                     <div className="price-now">{currentPrice.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
