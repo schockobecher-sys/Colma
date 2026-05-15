@@ -1,16 +1,39 @@
 import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
+import { useToast } from '../context/ToastContext';
 import { useEffect, useState, useMemo } from 'react';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
+  const { items, metadata, prices, getStats, lastUpdate, isSyncing, fetchPrices } = useCollection();
+  const { addToast } = useToast();
   const [syncStatus, setSyncStatus] = useState('idle');
 
   const stats = getStats();
 
+  // Collection breakdown (Cards vs Sealed)
+  const breakdown = useMemo(() => {
+    const counts = { Karte: 0, Sealed: 0 };
+    items.forEach(item => {
+      const type = metadata[item.idProduct]?.type || 'Karte';
+      if (counts[type] !== undefined) {
+        counts[type] += item.quantity;
+      } else {
+        counts.Karte += item.quantity;
+      }
+    });
+    const total = counts.Karte + counts.Sealed || 1;
+    return {
+      karte: (counts.Karte / total) * 100,
+      sealed: (counts.Sealed / total) * 100,
+      karteCount: counts.Karte,
+      sealedCount: counts.Sealed
+    };
+  }, [items, metadata]);
+
   // Status should be derived or set based on actual data
   const derivedSyncStatus = useMemo(() => {
+    if (isSyncing) return 'loading';
     const lastFetch = localStorage.getItem('colma_last_fetch_time');
     const now = new Date().getTime();
 
@@ -21,7 +44,7 @@ export default function HomePage() {
       return 'success';
     }
     return 'loading';
-  }, [prices]);
+  }, [prices, isSyncing]);
 
   // If we still want to use state for some reason (e.g. manual refresh)
   useEffect(() => {
@@ -53,10 +76,25 @@ export default function HomePage() {
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
+        <div className="sync-indicator" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            onClick={async () => {
+              try {
+                await fetchPrices(true);
+                addToast('Preise aktualisiert');
+              } catch {
+                addToast('Update fehlgeschlagen', 'error');
+              }
+            }}
+            disabled={isSyncing}
+            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', padding: '4px', display: 'flex' }}
+          >
+            <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+          </button>
+          <div title={`Zuletzt aktualisiert: ${formattedDate}`}>
+            {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
+            {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
+          </div>
         </div>
       </header>
 
@@ -74,7 +112,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '32px' }}>
+      <div className="grid-2" style={{ marginBottom: '24px' }}>
         <div className="stat-box">
           <div className="stat-label">Produkte</div>
           <div className="stat-value">{items.length}</div>
@@ -82,6 +120,24 @@ export default function HomePage() {
         <div className="stat-box">
           <div className="stat-label">Items Gesamt</div>
           <div className="stat-value">{stats.itemCount}</div>
+        </div>
+      </div>
+
+      <div className="breakdown-card" style={{ marginBottom: '32px', background: 'var(--glass-bg)', padding: '20px', borderRadius: '20px', border: '1px solid var(--glass-border)' }}>
+        <div className="stat-label" style={{ marginBottom: '12px' }}>Sammlung Breakdown</div>
+        <div className="breakdown-bar" style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden', display: 'flex', marginBottom: '12px' }}>
+          <div style={{ width: `${breakdown.karte}%`, background: 'var(--accent)', height: '100%' }}></div>
+          <div style={{ width: `${breakdown.sealed}%`, background: 'var(--accent-secondary)', height: '100%' }}></div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--accent)' }}></div>
+            <span>Karten: {breakdown.karteCount}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--accent-secondary)' }}></div>
+            <span>Sealed: {breakdown.sealedCount}</span>
+          </div>
         </div>
       </div>
 

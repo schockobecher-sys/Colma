@@ -127,6 +127,11 @@ button:active {
   to { transform: rotate(360deg); }
 }
 
+@keyframes slideUp {
+  from { transform: translate(-50%, 20px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
 .card {
   background: var(--bg-secondary);
   border-radius: 16px;
