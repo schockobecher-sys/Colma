@@ -1,22 +1,78 @@
-import { Settings, CreditCard, Bell, Shield, LogOut } from 'lucide-react';
+import { Settings, CreditCard, Bell, Shield, LogOut, Heart, PlusCircle } from 'lucide-react';
+import { useCollection } from '../context/CollectionContext';
+import { useToast } from '../context/ToastContext';
+import ProductListItem from '../components/ProductListItem';
+import FeedbackService from '../services/FeedbackService';
 
 export default function ProfilePage() {
-  // Re-purposing Favorites as "Profil" (Settings/User) as is common in mobile apps
+  const { wishlist, metadata, prices, toggleWishlist, addItem } = useCollection();
+  const { showToast } = useToast();
+
+  const handleAddFromWishlist = (idProduct) => {
+    const price = prices[idProduct]?.trend || 0;
+    addItem(idProduct, 1, price);
+    toggleWishlist(idProduct); // Remove from wishlist when added
+    FeedbackService.triggerAdd();
+    showToast('Zur Sammlung hinzugefügt', 'success');
+  };
+
   return (
     <div className="profile-page">
       <header className="app-header">
-        <h1 className="app-title">Profil</h1>
+        <h1 className="app-title">Profil & Wunschliste</h1>
       </header>
 
       <div style={{ padding: '0 16px' }}>
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-          <div style={{ width: '60px', height: '60px', borderRadius: '30px', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyCenter: 'center', fontSize: '24px' }}>👤</div>
-          <div>
-            <div style={{ fontWeight: '700', fontSize: '18px' }}>Gast-Sammler</div>
-            <div className="text-secondary" style={{ fontSize: '14px' }}>Lokal gespeichert</div>
+        <section style={{ marginBottom: '32px' }}>
+          <div className="section-title">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Heart size={16} className="text-danger" fill="currentColor" /> Wunschliste
+            </div>
           </div>
-        </div>
 
+          <div className="product-list">
+            {wishlist.length > 0 ? (
+              wishlist.map(id => {
+                const meta = metadata[id] || { idProduct: id, name: 'Lade...', set: '' };
+                const price = prices[id]?.trend || 0;
+                return (
+                  <div key={id} className="product-item">
+                    <div className="product-image">
+                      <img src={`https://static.cardmarket.com/img/products/1/${id}.jpg`} alt="" />
+                    </div>
+                    <div className="product-info">
+                      <div className="product-name">{meta.name}</div>
+                      <div className="product-meta">{meta.set}</div>
+                    </div>
+                    <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div className="price-now">{price.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
+                      <button
+                        className="btn-icon"
+                        onClick={() => handleAddFromWishlist(id)}
+                        title="In Sammlung übernehmen"
+                      >
+                        <PlusCircle size={20} />
+                      </button>
+                      <button
+                        className="btn-icon"
+                        style={{ background: 'transparent', boxShadow: 'none', color: 'var(--text-secondary)' }}
+                        onClick={() => toggleWishlist(id)}
+                      >
+                        <Heart size={20} className="text-danger" fill="currentColor" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="glass-panel text-center text-secondary" style={{ padding: '24px' }}>
+                Deine Wunschliste ist leer.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <div className="section-title">Einstellungen</div>
         <div className="product-list">
           <div className="product-item">
             <Settings size={20} className="text-secondary" />
@@ -40,8 +96,8 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="text-center text-secondary" style={{ marginTop: '40px', fontSize: '12px' }}>
-          Colma Collectoppr v0.1.0<br/>
+        <div className="text-center text-secondary" style={{ marginTop: '40px', fontSize: '12px', paddingBottom: '20px' }}>
+          Colma v1.0.0<br/>
           Daten von cardmarket.com
         </div>
       </div>

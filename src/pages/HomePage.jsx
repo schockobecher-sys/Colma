@@ -1,42 +1,22 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, Clock, Trophy, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const { items, metadata, prices, getStats, lastUpdate, isSyncing, fetchPrices } = useCollection();
 
   const stats = getStats();
 
-  // Status should be derived or set based on actual data
-  const derivedSyncStatus = useMemo(() => {
-    const lastFetch = localStorage.getItem('colma_last_fetch_time');
-    const now = new Date().getTime();
-
-    if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 5) {
-      return 'success';
-    }
-    if (Object.keys(prices).length > 0) {
-      return 'success';
-    }
-    return 'loading';
-  }, [prices]);
-
-  // If we still want to use state for some reason (e.g. manual refresh)
-  useEffect(() => {
-    setSyncStatus(derivedSyncStatus);
-  }, [derivedSyncStatus]);
-
-  // Derive "Top Performers" (highest gain per item)
+  // Derive "Top Performers" (highest total gain)
   const topPerformers = useMemo(() => {
     return [...items]
       .map(item => {
         const currentPrice = prices[item.idProduct]?.trend || 0;
-        const gain = currentPrice - (item.purchasePrice || 0);
-        return { ...item, gain };
+        const totalGain = (currentPrice - (item.purchasePrice || 0)) * item.quantity;
+        return { ...item, totalGain };
       })
-      .sort((a, b) => b.gain - a.gain)
+      .sort((a, b) => b.totalGain - a.totalGain)
       .slice(0, 3);
   }, [items, prices]);
 
@@ -51,13 +31,16 @@ export default function HomePage() {
 
   return (
     <div className="dashboard">
-      <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
-        </div>
+        <button
+          className="btn-icon"
+          onClick={() => fetchPrices(true)}
+          disabled={isSyncing}
+          style={{ background: 'transparent', boxShadow: 'none' }}
+        >
+          <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} />
+        </button>
       </header>
 
       <div className="portfolio-card">
@@ -65,22 +48,22 @@ export default function HomePage() {
         <div className="portfolio-value">
           {stats.totalValue.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
         </div>
-        <div className={`portfolio-change ${stats.totalProfit >= 0 ? 'text-success' : 'text-danger'}`}>
-          {stats.totalProfit >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+        <div className={`portfolio-change ${stats.totalProfit >= 0 ? 'text-success' : 'text-danger'}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700' }}>
+          {stats.totalProfit >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
           {stats.totalProfit >= 0 ? '+' : ''}{stats.totalProfit.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} ({stats.profitPercent.toFixed(1)}%)
         </div>
         <div className="text-secondary" style={{ fontSize: '10px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Clock size={10} /> Stand: {formattedDate} (Cardmarket)
+          <Clock size={10} /> Stand: {formattedDate}
         </div>
       </div>
 
       <div className="grid-2" style={{ marginBottom: '32px' }}>
         <div className="stat-box">
-          <div className="stat-label">Produkte</div>
+          <div className="stat-label">Einzigartig</div>
           <div className="stat-value">{items.length}</div>
         </div>
         <div className="stat-box">
-          <div className="stat-label">Items Gesamt</div>
+          <div className="stat-label">Gesamtanzahl</div>
           <div className="stat-value">{stats.itemCount}</div>
         </div>
       </div>
@@ -96,7 +79,6 @@ export default function HomePage() {
             {topPerformers.map(item => {
               const meta = metadata[item.idProduct] || { name: 'Lade...', set: '', idProduct: item.idProduct };
               const currentPrice = prices[item.idProduct]?.trend || 0;
-              const gain = currentPrice - (item.purchasePrice || 0);
               return (
                 <div key={item.idProduct} className="product-item">
                   <div className="product-image">
@@ -105,10 +87,10 @@ export default function HomePage() {
                   </div>
                   <div className="product-info">
                     <div className="product-name">{meta.name}</div>
-                    <div className="product-meta">Gain: <span className={gain >= 0 ? 'text-success' : 'text-danger'}>{gain >= 0 ? '+' : ''}{gain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div>
+                    <div className="product-meta">Profit: <span className={item.totalGain >= 0 ? 'text-success' : 'text-danger'}>{item.totalGain >= 0 ? '+' : ''}{item.totalGain.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div>
                   </div>
                   <div className="product-price">
-                    <div className="price-now">{currentPrice.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
+                    <div className="price-now">{(currentPrice * item.quantity).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
                   </div>
                 </div>
               );
@@ -122,7 +104,7 @@ export default function HomePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles size={16} className="text-accent" /> Zuletzt Hinzugefügt
           </div>
-          <Link to="/collection" className="view-all">Alle</Link>
+          <Link to="/collection" className="view-all">Alle ansehen</Link>
         </div>
         <div className="product-list">
           {recentlyAdded.map(item => {
@@ -144,8 +126,10 @@ export default function HomePage() {
             );
           })}
           {items.length === 0 && (
-            <div className="text-center text-secondary glass-panel" style={{ padding: '30px' }}>
-              Noch keine Produkte in der Sammlung.
+            <div className="text-center text-secondary glass-panel" style={{ padding: '40px 20px' }}>
+              <Plus size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
+              <div>Noch keine Produkte in der Sammlung.</div>
+              <Link to="/cards" className="text-accent" style={{ display: 'block', marginTop: '12px', fontSize: '14px', textDecoration: 'none', fontWeight: '700' }}>Jetzt suchen</Link>
             </div>
           )}
         </div>
@@ -157,7 +141,7 @@ export default function HomePage() {
           <div className="btn-icon"><Plus size={24} /></div>
           <div className="product-info">
             <div className="product-name">Sammlung erweitern</div>
-            <div className="product-meta">Neue Produkte in der Datenbank suchen</div>
+            <div className="product-meta">Karten in der Datenbank suchen</div>
           </div>
           <ChevronRight size={20} className="text-secondary" />
         </Link>
