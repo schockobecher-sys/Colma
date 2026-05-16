@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { CardmarketService } from '../services/CardmarketService';
 
 const CollectionContext = createContext();
@@ -21,46 +21,76 @@ export function CollectionProvider({ children }) {
     const savedPrices = localStorage.getItem('colma_prices');
     return savedPrices ? JSON.parse(savedPrices) : {};
   });
+
+  const [wishlist, setWishlist] = useState(() => {
+    const saved = localStorage.getItem('colma_wishlist');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [metadata, setMetadata] = useState({});
   const [lastUpdate, setLastUpdate] = useState(localStorage.getItem('colma_last_update') || '');
+  const [isSyncing, setIsSyncing] = useState(false);
 
+  // Sync collection to localStorage
   useEffect(() => {
     localStorage.setItem('colma_collection', JSON.stringify(items));
-    items.forEach(async (item) => {
-      if (!metadata[item.idProduct]) {
-        const meta = await CardmarketService.getProductMetadata(item.idProduct);
-        setMetadata(prev => ({ ...prev, [item.idProduct]: meta }));
+  }, [items]);
+
+  // Sync wishlist to localStorage
+  useEffect(() => {
+    localStorage.setItem('colma_wishlist', JSON.stringify(wishlist));
+  }, [wishlist]);
+
+  // Fetch metadata for items
+  useEffect(() => {
+    const fetchMissingMetadata = async () => {
+      const missingIds = items
+        .map(item => item.idProduct)
+        .filter(id => !metadata[id]);
+
+      if (missingIds.length === 0) return;
+
+      const updates = {};
+      for (const id of missingIds) {
+        updates[id] = await CardmarketService.getProductMetadata(id);
       }
-    });
+
+      setMetadata(prev => ({ ...prev, ...updates }));
+    };
+
+    fetchMissingMetadata();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
-  useEffect(() => {
-    async function fetchPrices() {
-      // Only fetch if data is older than 30 minutes
-      const now = new Date().getTime();
-      const lastFetch = localStorage.getItem('colma_last_fetch_time');
+  const fetchPrices = useCallback(async (force = false) => {
+    const now = new Date().getTime();
+    const lastFetch = localStorage.getItem('colma_last_fetch_time');
 
-      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
-        console.log('Using cached prices (less than 30 minutes old)');
-        return;
-      }
-
-      try {
-        const result = await CardmarketService.fetchPriceGuide();
-        if (result) {
-          setPrices(result.prices);
-          setLastUpdate(result.updatedAt);
-          localStorage.setItem('colma_prices', JSON.stringify(result.prices));
-          localStorage.setItem('colma_last_update', result.updatedAt);
-          localStorage.setItem('colma_last_fetch_time', now.toString());
-        }
-      } catch (e) {
-        console.error('Failed to update prices:', e);
-      }
+    if (!force && lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
+      console.log('Using cached prices');
+      return;
     }
-    fetchPrices();
+
+    setIsSyncing(true);
+    try {
+      const result = await CardmarketService.fetchPriceGuide();
+      if (result) {
+        setPrices(result.prices);
+        setLastUpdate(result.updatedAt);
+        localStorage.setItem('colma_prices', JSON.stringify(result.prices));
+        localStorage.setItem('colma_last_update', result.updatedAt);
+        localStorage.setItem('colma_last_fetch_time', now.toString());
+      }
+    } catch (e) {
+      console.error('Failed to update prices:', e);
+    } finally {
+      setIsSyncing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchPrices();
+  }, [fetchPrices]);
 
   const addItem = (idProduct, quantity = 1, purchasePrice = 0) => {
     setItems(prev => {
@@ -75,7 +105,7 @@ export function CollectionProvider({ children }) {
       return [...prev, {
         idProduct,
         quantity,
-        purchasePrice,
+        purchasePrice: purchasePrice || (prices[idProduct]?.trend || 0),
         dateAdded: new Date().toISOString()
       }];
     });
@@ -83,6 +113,15 @@ export function CollectionProvider({ children }) {
 
   const removeItem = (idProduct) => {
     setItems(prev => prev.filter(item => item.idProduct !== idProduct));
+  };
+
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev => prev.map(item => {
+      if (item.idProduct === idProduct) {
+        return { ...item, quantity: Math.max(1, item.quantity + delta) };
+      }
+      return item;
+    }));
   };
 
   const updateItem = (idProduct, updates) => {
@@ -93,22 +132,24 @@ export function CollectionProvider({ children }) {
     );
   };
 
-  const getTotalValue = () => {
-    return items.reduce((total, item) => {
-      const currentPrice = prices[item.idProduct]?.trend || 0;
-      return total + currentPrice * item.quantity;
-    }, 0);
-  };
-
-  const getTotalPurchaseValue = () => {
-    return items.reduce((total, item) => {
-      return total + (item.purchasePrice || 0) * item.quantity;
-    }, 0);
+  const toggleWishlist = (idProduct) => {
+    setWishlist(prev =>
+      prev.includes(idProduct)
+        ? prev.filter(id => id !== idProduct)
+        : [...prev, idProduct]
+    );
   };
 
   const getStats = () => {
-    const totalValue = getTotalValue();
-    const purchaseValue = getTotalPurchaseValue();
+    const totalValue = items.reduce((total, item) => {
+      const currentPrice = prices[item.idProduct]?.trend || 0;
+      return total + currentPrice * item.quantity;
+    }, 0);
+
+    const purchaseValue = items.reduce((total, item) => {
+      return total + (item.purchasePrice || 0) * item.quantity;
+    }, 0);
+
     const totalProfit = totalValue - purchaseValue;
     const profitPercent = purchaseValue > 0 ? (totalProfit / purchaseValue) * 100 : 0;
 
@@ -127,14 +168,16 @@ export function CollectionProvider({ children }) {
         items,
         prices,
         metadata,
+        wishlist,
         lastUpdate,
-        setPrices,
-        setMetadata,
+        isSyncing,
         addItem,
         removeItem,
+        updateQuantity,
         updateItem,
+        toggleWishlist,
         getStats,
-        getTotalValue
+        fetchPrices
       }}
     >
       {children}
