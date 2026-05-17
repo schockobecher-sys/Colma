@@ -1,15 +1,19 @@
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, ChevronRight, Minus } from 'lucide-react';
 
 export default function ProductListItem({
   product,
   price,
   quantity,
+  purchasePrice,
   onAdd,
   onRemove,
+  onUpdateQuantity,
   isSearch = false
 }) {
   const imageUrl = `https://static.cardmarket.com/img/products/1/${product.idProduct}.jpg`;
   const isCard = product.type === 'Karte';
+  const totalValue = price * (quantity || 1);
+  const profit = quantity ? (price - (purchasePrice || 0)) * quantity : 0;
 
   return (
     <div className="product-item">
@@ -28,16 +32,39 @@ export default function ProductListItem({
       </div>
       <div className="product-info">
         <div className="product-name">{product.name}</div>
-        <div className="product-meta">{product.set} • {isSearch ? 'Deutsch' : `${quantity} Stück`}</div>
+        <div className="product-meta">
+          {product.set}
+          {!isSearch && (
+            <div style={{ marginTop: '2px', display: 'flex', gap: '8px' }}>
+              <span>EK: {(purchasePrice || 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
+              <span className={profit >= 0 ? 'text-success' : 'text-danger'}>
+                {profit >= 0 ? '+' : ''}{profit.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
+
       <div className="product-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <div style={{ textAlign: 'right' }}>
           <div className="price-now">
-            {(price * (quantity || 1)).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+            {totalValue.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
           </div>
           {!isSearch && (
-            <div className="text-secondary" style={{ fontSize: '10px' }}>
-              {price.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} / Stk
+            <div className="quantity-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); onUpdateQuantity(-1); }}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+              >
+                <Minus size={12} />
+              </button>
+              <span style={{ fontSize: '12px', fontWeight: '700', minWidth: '12px', textAlign: 'center' }}>{quantity}</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); onUpdateQuantity(1); }}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+              >
+                <Plus size={12} />
+              </button>
             </div>
           )}
         </div>

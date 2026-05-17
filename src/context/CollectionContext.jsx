@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { CardmarketService } from '../services/CardmarketService';
 
 const CollectionContext = createContext();
@@ -23,44 +23,58 @@ export function CollectionProvider({ children }) {
   });
   const [metadata, setMetadata] = useState({});
   const [lastUpdate, setLastUpdate] = useState(localStorage.getItem('colma_last_update') || '');
+  const [isSyncing, setIsSyncing] = useState(false);
 
+  // Optimized metadata fetching - fixed dependency issue
   useEffect(() => {
     localStorage.setItem('colma_collection', JSON.stringify(items));
-    items.forEach(async (item) => {
-      if (!metadata[item.idProduct]) {
-        const meta = await CardmarketService.getProductMetadata(item.idProduct);
-        setMetadata(prev => ({ ...prev, [item.idProduct]: meta }));
-      }
-    });
+
+    const missingMetadata = items.filter(item => !metadata[item.idProduct]);
+
+    if (missingMetadata.length > 0) {
+      const fetchMissing = async () => {
+        // Fetch all missing ones in a single batch-like loop if possible,
+        // but here we just iterate. The key is removing 'metadata' from deps.
+        for (const item of missingMetadata) {
+          const meta = await CardmarketService.getProductMetadata(item.idProduct);
+          setMetadata(prev => ({ ...prev, [item.idProduct]: meta }));
+        }
+      };
+      fetchMissing();
+    }
+    // metadata is removed from dependencies to avoid infinite loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
-  useEffect(() => {
-    async function fetchPrices() {
-      // Only fetch if data is older than 30 minutes
-      const now = new Date().getTime();
-      const lastFetch = localStorage.getItem('colma_last_fetch_time');
+  const fetchPrices = useCallback(async (force = false) => {
+    const now = new Date().getTime();
+    const lastFetch = localStorage.getItem('colma_last_fetch_time');
 
-      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
-        console.log('Using cached prices (less than 30 minutes old)');
-        return;
-      }
-
-      try {
-        const result = await CardmarketService.fetchPriceGuide();
-        if (result) {
-          setPrices(result.prices);
-          setLastUpdate(result.updatedAt);
-          localStorage.setItem('colma_prices', JSON.stringify(result.prices));
-          localStorage.setItem('colma_last_update', result.updatedAt);
-          localStorage.setItem('colma_last_fetch_time', now.toString());
-        }
-      } catch (e) {
-        console.error('Failed to update prices:', e);
-      }
+    if (!force && lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
+      console.log('Using cached prices (less than 30 minutes old)');
+      return;
     }
-    fetchPrices();
+
+    setIsSyncing(true);
+    try {
+      const result = await CardmarketService.fetchPriceGuide();
+      if (result) {
+        setPrices(result.prices);
+        setLastUpdate(result.updatedAt);
+        localStorage.setItem('colma_prices', JSON.stringify(result.prices));
+        localStorage.setItem('colma_last_update', result.updatedAt);
+        localStorage.setItem('colma_last_fetch_time', now.toString());
+      }
+    } catch (e) {
+      console.error('Failed to update prices:', e);
+    } finally {
+      setIsSyncing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchPrices();
+  }, [fetchPrices]);
 
   const addItem = (idProduct, quantity = 1, purchasePrice = 0) => {
     setItems(prev => {
@@ -89,6 +103,16 @@ export function CollectionProvider({ children }) {
     setItems(prev =>
       prev.map(item =>
         item.idProduct === idProduct ? { ...item, ...updates } : item
+      )
+    );
+  };
+
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev =>
+      prev.map(item =>
+        item.idProduct === idProduct
+          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          : item
       )
     );
   };
@@ -128,11 +152,12 @@ export function CollectionProvider({ children }) {
         prices,
         metadata,
         lastUpdate,
-        setPrices,
-        setMetadata,
+        isSyncing,
+        fetchPrices,
         addItem,
         removeItem,
         updateItem,
+        updateQuantity,
         getStats,
         getTotalValue
       }}
