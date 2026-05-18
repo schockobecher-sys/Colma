@@ -17,48 +17,60 @@ export function CollectionProvider({ children }) {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [wishlist, setWishlist] = useState(() => {
+    const saved = localStorage.getItem('colma_wishlist');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [prices, setPrices] = useState(() => {
     const savedPrices = localStorage.getItem('colma_prices');
     return savedPrices ? JSON.parse(savedPrices) : {};
   });
   const [metadata, setMetadata] = useState({});
+  const [isSyncing, setIsSyncing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(localStorage.getItem('colma_last_update') || '');
+
+  const fetchPrices = async (force = false) => {
+    const now = new Date().getTime();
+    const lastFetch = localStorage.getItem('colma_last_fetch_time');
+
+    if (!force && lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
+      console.log('Using cached prices (less than 30 minutes old)');
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const result = await CardmarketService.fetchPriceGuide();
+      if (result) {
+        setPrices(result.prices);
+        setLastUpdate(result.updatedAt);
+        localStorage.setItem('colma_prices', JSON.stringify(result.prices));
+        localStorage.setItem('colma_last_update', result.updatedAt);
+        localStorage.setItem('colma_last_fetch_time', now.toString());
+      }
+    } catch (e) {
+      console.error('Failed to update prices:', e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('colma_collection', JSON.stringify(items));
-    items.forEach(async (item) => {
-      if (!metadata[item.idProduct]) {
-        const meta = await CardmarketService.getProductMetadata(item.idProduct);
-        setMetadata(prev => ({ ...prev, [item.idProduct]: meta }));
+    localStorage.setItem('colma_wishlist', JSON.stringify(wishlist));
+
+    const allIds = [...new Set([...items.map(i => i.idProduct), ...wishlist])];
+    allIds.forEach(async (idProduct) => {
+      if (!metadata[idProduct]) {
+        const meta = await CardmarketService.getProductMetadata(idProduct);
+        setMetadata(prev => ({ ...prev, [idProduct]: meta }));
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
+  }, [items, wishlist]);
 
   useEffect(() => {
-    async function fetchPrices() {
-      // Only fetch if data is older than 30 minutes
-      const now = new Date().getTime();
-      const lastFetch = localStorage.getItem('colma_last_fetch_time');
-
-      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
-        console.log('Using cached prices (less than 30 minutes old)');
-        return;
-      }
-
-      try {
-        const result = await CardmarketService.fetchPriceGuide();
-        if (result) {
-          setPrices(result.prices);
-          setLastUpdate(result.updatedAt);
-          localStorage.setItem('colma_prices', JSON.stringify(result.prices));
-          localStorage.setItem('colma_last_update', result.updatedAt);
-          localStorage.setItem('colma_last_fetch_time', now.toString());
-        }
-      } catch (e) {
-        console.error('Failed to update prices:', e);
-      }
-    }
     fetchPrices();
   }, []);
 
@@ -90,6 +102,24 @@ export function CollectionProvider({ children }) {
       prev.map(item =>
         item.idProduct === idProduct ? { ...item, ...updates } : item
       )
+    );
+  };
+
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev =>
+      prev.map(item =>
+        item.idProduct === idProduct
+          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          : item
+      )
+    );
+  };
+
+  const toggleWishlist = (idProduct) => {
+    setWishlist(prev =>
+      prev.includes(idProduct)
+        ? prev.filter(id => id !== idProduct)
+        : [...prev, idProduct]
     );
   };
 
@@ -125,14 +155,19 @@ export function CollectionProvider({ children }) {
     <CollectionContext.Provider
       value={{
         items,
+        wishlist,
         prices,
         metadata,
         lastUpdate,
+        isSyncing,
+        fetchPrices,
         setPrices,
         setMetadata,
         addItem,
         removeItem,
         updateItem,
+        updateQuantity,
+        toggleWishlist,
         getStats,
         getTotalValue
       }}

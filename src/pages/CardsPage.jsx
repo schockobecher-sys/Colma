@@ -1,14 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, Heart } from 'lucide-react';
 import { useCollection } from '../context/CollectionContext';
+import { useToast } from '../context/ToastContext';
 import { CardmarketService } from '../services/CardmarketService';
 import ProductListItem from '../components/ProductListItem';
 import FeedbackService from '../services/FeedbackService';
 
 export default function CardsPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const { addItem, prices } = useCollection();
+  const [selectedSet, setSelectedSet] = useState(null);
+  const { addItem, toggleWishlist, wishlist, prices } = useCollection();
+  const { showToast } = useToast();
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  const allSets = useMemo(() => CardmarketService.getAllSets(), []);
 
   // Debouncing logic
   useEffect(() => {
@@ -19,15 +24,20 @@ export default function CardsPage() {
   }, [searchTerm]);
 
   const searchResults = useMemo(() => {
-    return CardmarketService.searchProducts(debouncedSearch);
-  }, [debouncedSearch]);
+    return CardmarketService.searchProducts(debouncedSearch, selectedSet);
+  }, [debouncedSearch, selectedSet]);
 
   const handleAdd = (product) => {
     const price = prices[product.idProduct]?.trend || 0;
     addItem(product.idProduct, 1, price);
     FeedbackService.triggerAdd();
-    // Use a non-blocking notification instead of alert for better UX
-    console.log(`${product.name} hinzugefügt`);
+    showToast(`${product.name} zur Sammlung hinzugefügt`);
+  };
+
+  const handleToggleWishlist = (product) => {
+    toggleWishlist(product.idProduct);
+    const inWishlist = wishlist.includes(product.idProduct);
+    showToast(inWishlist ? 'Von Wunschliste entfernt' : 'Zur Wunschliste hinzugefügt', inWishlist ? 'info' : 'success');
   };
 
   return (
@@ -36,7 +46,7 @@ export default function CardsPage() {
         <h1 className="app-title">Suche</h1>
       </header>
 
-      <div className="search-container" style={{ padding: '0 16px', marginBottom: '20px' }}>
+      <div className="search-container" style={{ padding: '0 16px', marginBottom: '10px' }}>
         <div className="search-input-wrapper" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Search size={20} className="text-secondary" />
           <input
@@ -50,6 +60,26 @@ export default function CardsPage() {
         </div>
       </div>
 
+      <div className="set-filters" style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '0 16px 16px', scrollbarWidth: 'none' }}>
+        <button
+          className={`filter-chip ${!selectedSet ? 'active' : ''}`}
+          onClick={() => setSelectedSet(null)}
+          style={{ whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '20px', background: !selectedSet ? 'var(--accent)' : 'var(--bg-secondary)', color: !selectedSet ? 'black' : 'white', fontSize: '12px', fontWeight: 'bold' }}
+        >
+          Alle
+        </button>
+        {allSets.map(set => (
+          <button
+            key={set}
+            className={`filter-chip ${selectedSet === set ? 'active' : ''}`}
+            onClick={() => setSelectedSet(selectedSet === set ? null : set)}
+            style={{ whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '20px', background: selectedSet === set ? 'var(--accent)' : 'var(--bg-secondary)', color: selectedSet === set ? 'black' : 'white', fontSize: '12px', fontWeight: 'bold' }}
+          >
+            {set}
+          </button>
+        ))}
+      </div>
+
       <div className="results-list" style={{ padding: '0 16px' }}>
         <div className="section-title">Ergebnisse</div>
         <div className="product-list">
@@ -60,6 +90,8 @@ export default function CardsPage() {
                 product={result}
                 price={prices[result.idProduct]?.trend || 0}
                 onAdd={handleAdd}
+                onToggleWishlist={handleToggleWishlist}
+                isWishlisted={wishlist.includes(result.idProduct)}
                 isSearch={true}
               />
             ))

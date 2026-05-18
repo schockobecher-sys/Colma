@@ -1,32 +1,40 @@
-import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Plus, ChevronRight, RefreshCw, CheckCircle2, AlertCircle, Clock, Trophy, Sparkles, PieChart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCollection } from '../context/CollectionContext';
-import { useEffect, useState, useMemo } from 'react';
+import { useToast } from '../context/ToastContext';
+import { useMemo } from 'react';
 
 export default function HomePage() {
-  const { items, metadata, prices, getStats, lastUpdate } = useCollection();
-  const [syncStatus, setSyncStatus] = useState('idle');
+  const { items, metadata, prices, getStats, lastUpdate, isSyncing, fetchPrices } = useCollection();
+  const { showToast } = useToast();
 
   const stats = getStats();
 
-  // Status should be derived or set based on actual data
-  const derivedSyncStatus = useMemo(() => {
-    const lastFetch = localStorage.getItem('colma_last_fetch_time');
-    const now = new Date().getTime();
-
-    if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 5) {
-      return 'success';
+  const handleRefresh = async () => {
+    try {
+      await fetchPrices(true);
+      showToast('Preise erfolgreich aktualisiert');
+    } catch (err) {
+      console.error(err);
+      showToast('Fehler beim Aktualisieren der Preise', 'error');
     }
-    if (Object.keys(prices).length > 0) {
-      return 'success';
-    }
-    return 'loading';
-  }, [prices]);
+  };
 
-  // If we still want to use state for some reason (e.g. manual refresh)
-  useEffect(() => {
-    setSyncStatus(derivedSyncStatus);
-  }, [derivedSyncStatus]);
+  // Breakdown logic
+  const breakdown = useMemo(() => {
+    const counts = { Karte: 0, Sealed: 0 };
+    items.forEach(item => {
+      const type = metadata[item.idProduct]?.type || 'Unbekannt';
+      if (type === 'Karte') counts.Karte += item.quantity;
+      if (type === 'Sealed') counts.Sealed += item.quantity;
+    });
+    const total = counts.Karte + counts.Sealed || 1;
+    return {
+      karte: (counts.Karte / total) * 100,
+      sealed: (counts.Sealed / total) * 100,
+      totalCount: counts.Karte + counts.Sealed
+    };
+  }, [items, metadata]);
 
   // Derive "Top Performers" (highest gain per item)
   const topPerformers = useMemo(() => {
@@ -53,11 +61,20 @@ export default function HomePage() {
     <div className="dashboard">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="app-title">Colma<span>TCG</span></h1>
-        <div className="sync-indicator" title={`Zuletzt aktualisiert: ${formattedDate}`}>
-          {syncStatus === 'loading' && <RefreshCw size={16} className="text-secondary animate-spin" />}
-          {syncStatus === 'success' && <CheckCircle2 size={16} className="text-success" />}
-          {syncStatus === 'error' && <AlertCircle size={16} className="text-danger" />}
-        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={isSyncing}
+          className="sync-indicator"
+          style={{ background: 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}
+          title={`Zuletzt aktualisiert: ${formattedDate}`}
+        >
+          {isSyncing ? (
+            <RefreshCw size={18} className="text-secondary animate-spin" />
+          ) : (
+            <CheckCircle2 size={18} className="text-success" />
+          )}
+          <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>REFRESH</span>
+        </button>
       </header>
 
       <div className="portfolio-card">
@@ -74,7 +91,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '32px' }}>
+      <div className="grid-2" style={{ marginBottom: '24px' }}>
         <div className="stat-box">
           <div className="stat-label">Produkte</div>
           <div className="stat-value">{items.length}</div>
@@ -82,6 +99,22 @@ export default function HomePage() {
         <div className="stat-box">
           <div className="stat-label">Items Gesamt</div>
           <div className="stat-value">{stats.itemCount}</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '32px', padding: '16px' }}>
+        <div className="section-title" style={{ marginBottom: '12px', fontSize: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <PieChart size={14} className="text-accent-secondary" /> Collection Breakdown
+          </div>
+        </div>
+        <div className="breakdown-bar" style={{ height: '8px', background: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
+          <div style={{ width: `${breakdown.karte}%`, background: 'var(--accent)', transition: 'width 0.5s ease' }}></div>
+          <div style={{ width: `${breakdown.sealed}%`, background: 'var(--accent-secondary)', transition: 'width 0.5s ease' }}></div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '10px', fontWeight: 'bold' }}>
+          <span style={{ color: 'var(--accent)' }}>Karten ({Math.round(breakdown.karte)}%)</span>
+          <span style={{ color: 'var(--accent-secondary)' }}>Sealed ({Math.round(breakdown.sealed)}%)</span>
         </div>
       </div>
 
