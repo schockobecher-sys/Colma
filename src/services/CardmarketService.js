@@ -65,13 +65,28 @@ export const CardmarketService = {
   /**
    * Local search against curated products.
    */
-  searchProducts(query) {
-    if (!query || query.length < 3) return [];
+  searchProducts(query, setFilter = null) {
+    // If set filter is active but no query, return all from set
+    if (setFilter && (!query || query.length === 0)) {
+      return germanProducts.filter(p => p.set === setFilter);
+    }
+
+    // If no query and no set filter, return empty (or list of sets)
+    if (!query || query.length < 3) {
+      if (!query && !setFilter) return germanProducts; // Return all to extract sets if needed
+      return [];
+    }
+
     const q = query.toLowerCase();
-    return germanProducts.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.set.toLowerCase().includes(q)
-    );
+    return germanProducts.filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(q) || p.set.toLowerCase().includes(q);
+      const matchesSet = setFilter ? p.set === setFilter : true;
+      return matchesSearch && matchesSet;
+    });
+  },
+
+  searchProductsBySet(setName) {
+    return germanProducts.filter(p => p.set === setName);
   },
 
   /**
