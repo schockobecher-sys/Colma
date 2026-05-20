@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { CardmarketService } from '../services/CardmarketService';
+import { useToast } from './ToastContext';
 
 const CollectionContext = createContext();
 
@@ -17,12 +18,19 @@ export function CollectionProvider({ children }) {
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [wishlist, setWishlist] = useState(() => {
+    const saved = localStorage.getItem('colma_wishlist');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [prices, setPrices] = useState(() => {
     const savedPrices = localStorage.getItem('colma_prices');
     return savedPrices ? JSON.parse(savedPrices) : {};
   });
   const [metadata, setMetadata] = useState({});
   const [lastUpdate, setLastUpdate] = useState(localStorage.getItem('colma_last_update') || '');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const { showToast } = useToast() || { showToast: () => {} };
 
   useEffect(() => {
     localStorage.setItem('colma_collection', JSON.stringify(items));
@@ -36,31 +44,49 @@ export function CollectionProvider({ children }) {
   }, [items]);
 
   useEffect(() => {
-    async function fetchPrices() {
-      // Only fetch if data is older than 30 minutes
-      const now = new Date().getTime();
-      const lastFetch = localStorage.getItem('colma_last_fetch_time');
-
-      if (lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
-        console.log('Using cached prices (less than 30 minutes old)');
-        return;
+    localStorage.setItem('colma_wishlist', JSON.stringify(wishlist));
+    wishlist.forEach(async (idProduct) => {
+      if (!metadata[idProduct]) {
+        const meta = await CardmarketService.getProductMetadata(idProduct);
+        setMetadata(prev => ({ ...prev, [idProduct]: meta }));
       }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wishlist]);
 
-      try {
-        const result = await CardmarketService.fetchPriceGuide();
-        if (result) {
-          setPrices(result.prices);
-          setLastUpdate(result.updatedAt);
-          localStorage.setItem('colma_prices', JSON.stringify(result.prices));
-          localStorage.setItem('colma_last_update', result.updatedAt);
-          localStorage.setItem('colma_last_fetch_time', now.toString());
-        }
-      } catch (e) {
-        console.error('Failed to update prices:', e);
-      }
+  useEffect(() => {
+    localStorage.setItem('colma_prices', JSON.stringify(prices));
+  }, [prices]);
+
+  const fetchPrices = useCallback(async (force = false) => {
+    const now = new Date().getTime();
+    const lastFetch = localStorage.getItem('colma_last_fetch_time');
+
+    if (!force && lastFetch && now - Number(lastFetch) < 1000 * 60 * 30) {
+      return;
     }
+
+    setIsSyncing(true);
+    try {
+      const result = await CardmarketService.fetchPriceGuide();
+      if (result) {
+        setPrices(result.prices);
+        setLastUpdate(result.updatedAt);
+        localStorage.setItem('colma_last_update', result.updatedAt);
+        localStorage.setItem('colma_last_fetch_time', now.toString());
+        if (force) showToast('Preise erfolgreich aktualisiert');
+      }
+    } catch (e) {
+      console.error('Failed to update prices:', e);
+      if (force) showToast('Fehler beim Preis-Update', 'danger');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
     fetchPrices();
-  }, []);
+  }, [fetchPrices]);
 
   const addItem = (idProduct, quantity = 1, purchasePrice = 0) => {
     setItems(prev => {
@@ -83,6 +109,22 @@ export function CollectionProvider({ children }) {
 
   const removeItem = (idProduct) => {
     setItems(prev => prev.filter(item => item.idProduct !== idProduct));
+  };
+
+  const updateQuantity = (idProduct, delta) => {
+    setItems(prev => prev.map(item =>
+      item.idProduct === idProduct
+        ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+        : item
+    ));
+  };
+
+  const toggleWishlist = (idProduct) => {
+    setWishlist(prev =>
+      prev.includes(idProduct)
+        ? prev.filter(id => id !== idProduct)
+        : [...prev, idProduct]
+    );
   };
 
   const updateItem = (idProduct, updates) => {
@@ -125,16 +167,21 @@ export function CollectionProvider({ children }) {
     <CollectionContext.Provider
       value={{
         items,
+        wishlist,
         prices,
         metadata,
         lastUpdate,
+        isSyncing,
         setPrices,
         setMetadata,
         addItem,
         removeItem,
         updateItem,
+        updateQuantity,
+        toggleWishlist,
         getStats,
-        getTotalValue
+        getTotalValue,
+        fetchPrices
       }}
     >
       {children}
